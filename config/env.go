@@ -15,18 +15,37 @@ import (
 
 var EnvConfig = envConfigSchema{}
 
+func (s *envConfigSchema) GetDSN() string {
+	return dsn
+}
+
+var dsn string
+
 func init() {
 	envInit()
+	dsn = fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", EnvConfig.MYSQL_USERNAME, EnvConfig.MYSQL_PASSWORD, EnvConfig.MYSQL_HOST, EnvConfig.MYSQL_PORT, EnvConfig.MYSQL_DB_NAME)
 }
 
 var defaultConfig = envConfigSchema{
 	ENV: "dev",
+
+	MYSQL_HOST:     "127.0.0.1",
+	MYSQL_PORT:     "18888",
+	MYSQL_USERNAME: "devlop",
+	MYSQL_PASSWORD: "123456",
+	MYSQL_DB_NAME:  "devlop",
 
 	MAX_REQUEST_BODY_SIZE: 200 * 1024 * 1024,
 }
 
 type envConfigSchema struct {
 	ENV string `env:"ENV,DREAM_ENV"`
+
+	MYSQL_HOST     string
+	MYSQL_PORT     string
+	MYSQL_USERNAME string
+	MYSQL_PASSWORD string
+	MYSQL_DB_NAME  string
 
 	MAX_REQUEST_BODY_SIZE int
 }

@@ -29,7 +29,7 @@ func newUserCheckinMachineInfo(db *gorm.DB, opts ...gen.DOOption) userCheckinMac
 	_userCheckinMachineInfo.ALL = field.NewAsterisk(tableName)
 	_userCheckinMachineInfo.ID = field.NewInt(tableName, "id")
 	_userCheckinMachineInfo.Sn = field.NewString(tableName, "sn")
-	_userCheckinMachineInfo.Enrollid = field.NewString(tableName, "enrollid")
+	_userCheckinMachineInfo.Enrollid = field.NewInt(tableName, "enrollid")
 	_userCheckinMachineInfo.Name = field.NewString(tableName, "name")
 	_userCheckinMachineInfo.Backupnum = field.NewInt(tableName, "backupnum")
 	_userCheckinMachineInfo.Admin = field.NewInt(tableName, "admin")
@@ -49,7 +49,7 @@ type userCheckinMachineInfo struct {
 	ALL       field.Asterisk
 	ID        field.Int
 	Sn        field.String
-	Enrollid  field.String
+	Enrollid  field.Int
 	Name      field.String
 	Backupnum field.Int
 	Admin     field.Int
@@ -75,7 +75,7 @@ func (u *userCheckinMachineInfo) updateTableName(table string) *userCheckinMachi
 	u.ALL = field.NewAsterisk(table)
 	u.ID = field.NewInt(table, "id")
 	u.Sn = field.NewString(table, "sn")
-	u.Enrollid = field.NewString(table, "enrollid")
+	u.Enrollid = field.NewInt(table, "enrollid")
 	u.Name = field.NewString(table, "name")
 	u.Backupnum = field.NewInt(table, "backupnum")
 	u.Admin = field.NewInt(table, "admin")

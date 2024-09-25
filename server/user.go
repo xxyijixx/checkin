@@ -1,7 +1,9 @@
 package server
 
 import (
+	"checkin/query"
 	checkinMsg "checkin/server/msg"
+	"context"
 	"encoding/json"
 
 	"github.com/gorilla/websocket"
@@ -76,4 +78,35 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 		log.Printf("对设备[%s]下发用户信息[%d]成功", response.Sn, response.Enrollid)
 	}
 
+}
+
+// handleDeleteuser 处理删除用户信息
+func handleDeleteuser(conn *websocket.Conn, msg checkinMsg.DeleteuserMessage) {
+	sendData(conn, msg)
+}
+
+func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
+	_ = conn
+
+	var response checkinMsg.DeleteuserResponse
+	if err := json.Unmarshal(msg, &response); err != nil {
+		log.Printf("JSON unmarshal error: %v", err)
+		return
+	}
+	if !response.Result {
+		log.Println("Error delete user info:", response.Reason)
+	} else {
+		log.Printf("删除用户信息[%d]成功", response.Enrollid)
+		if response.Backupnum == 13 {
+			// 全部删除
+			query.UserCheckinMachineInfo.WithContext(context.Background()).
+				Where(query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid)).Delete()
+		} else {
+			query.UserCheckinMachineInfo.WithContext(context.Background()).
+				Where(
+					query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
+					query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
+				).Delete()
+		}
+	}
 }

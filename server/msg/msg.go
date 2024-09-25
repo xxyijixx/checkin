@@ -73,7 +73,7 @@ type WSResponse struct {
 	Result    bool   `json:"result"`
 	Sn        string `json:"sn,omitempty"`
 	Enrollid  int    `json:"enrollid,omitempty"`
-	Backupnum int    `json:"backupnum"`
+	Backupnum int    `json:"backupnum,omitempty"`
 	Count     int    `json:"count,omitempty"`
 	Logindex  int    `json:"logindex,omitempty"`
 	Cloudtime string `json:"cloudtime,omitempty"`
@@ -106,4 +106,19 @@ type GetuserinfoMessage struct {
 	Cmd       string `json:"cmd"`
 	Enrollid  int    `json:"enrollid"`
 	Backupnum int    `json:"backupnum"`
+}
+
+type DeleteuserMessage struct {
+	Cmd       string `json:"cmd"`
+	Enrollid  int    `json:"enrollid"`
+	Backupnum int    `json:"backupnum"` // 0-9 指纹 10 密码 11 卡 12 删除所有指纹信息  13 删除整个人
+}
+
+type DeleteuserResponse struct {
+	Ret       string `json:"ret"`
+	Enrollid  int    `json:"enrollid"`
+	Sn        string `json:"sn"`
+	Backupnum int    `json:"backupnum"` // 0-9 指纹 10 密码 11 卡 12 删除所有指纹信息  13 删除整个人
+	Result    bool   `json:"result"`
+	Reason    int    `json:"reason"`
 }

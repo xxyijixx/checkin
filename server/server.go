@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +20,7 @@ const (
 	CmdGetuserlist = "getuserlist"
 	CmdGetuserinfo = "getuserinfo"
 	CmdSetuserinfo = "setuserinfo"
+	CmdDeleteuser  = "deleteuser"
 )
 
 // 创建一个 WebSocket 升级器
@@ -45,16 +47,19 @@ var receives = map[string]cmdReceiverFunc{
 	"getuserlist": receiveGetuserlist,
 	"getuserinfo": receiveGetuserinfo,
 	"setuserinfo": receiveSetuserinfo,
+	"deleteuser":  receiveDeleteuser,
 }
 
 // 发送 WebSocket 响应
 func sendResponse(conn *websocket.Conn, response checkinMsg.WSResponse) {
+	log.Debugf("发送响应: %+v", response)
 	if err := conn.WriteJSON(response); err != nil {
 		log.Println("Write error:", err)
 	}
 }
 
 func sendData(conn *websocket.Conn, data interface{}) {
+	log.Debugf("发送数据: %+v", data)
 	if err := conn.WriteJSON(data); err != nil {
 		log.Println("Write error:", err)
 	}
@@ -74,6 +79,17 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close() // 在函数返回前关闭连接
 	clients[conn] = true
 	log.Println("Client connected")
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		handleSetuserinfo(conn, checkinMsg.SetuserinfoMessage{
+			Cmd:       CmdSetuserinfo,
+			Name:      "测试用户2",
+			Enrollid:  10,
+			Backupnum: 10,
+			Record:    123123,
+		})
+	}()
 
 	// 监听来自客户端的消息
 	for {

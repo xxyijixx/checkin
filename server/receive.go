@@ -100,27 +100,50 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 	recordStr := ""
 	switch v := senduserMsg.Record.(type) {
 	case float64:
-		recordStr = fmt.Sprintf("%v", v) // 将数字转换为字符串
+		recordStr = fmt.Sprintf("%.f", v) // 将数字转换为字符串
 	case string:
 		recordStr = v // 直接使用字符串
 	default:
 		recordStr = "" // 或者处理其他情况
 	}
-	err := query.UserCheckinMachineInfo.WithContext(context.Background()).Create(&model.UserCheckinMachineInfo{
-		Sn:        senduserMsg.Sn,
-		Enrollid:  senduserMsg.Enrollid,
-		Name:      senduserMsg.Name,
-		Backupnum: senduserMsg.Backupnum,
-		Record:    recordStr,
-	})
+	fmt.Println("接收Message:", senduserMsg)
+	ctx := context.Background()
+	userInfo, err := query.UserCheckinMachineInfo.WithContext(ctx).
+		Where(query.UserCheckinMachineInfo.Enrollid.Eq(senduserMsg.Enrollid),
+			query.UserCheckinMachineInfo.Backupnum.Eq(senduserMsg.Backupnum),
+			query.UserCheckinMachineInfo.Sn.Eq(senduserMsg.Sn),
+		).First()
 	if err != nil {
-		sendResponse(conn, checkinMsg.WSResponse{
-			Ret:    "senduser",
-			Result: false,
-			Reason: 1,
-		})
-		return
+		if err != gorm.ErrRecordNotFound {
+			sendResponse(conn, checkinMsg.WSResponse{
+				Ret:    "senduser",
+				Result: false,
+				Reason: 1,
+			})
+			return
+		}
 	}
+	// 用户信息未记录
+	if userInfo == nil {
+		log.Debugf("用户信息未登记: %+v", senduserMsg)
+		err = query.UserCheckinMachineInfo.WithContext(ctx).Create(&model.UserCheckinMachineInfo{
+			Sn:        senduserMsg.Sn,
+			Enrollid:  senduserMsg.Enrollid,
+			Name:      senduserMsg.Name,
+			Backupnum: senduserMsg.Backupnum,
+			Record:    recordStr,
+		})
+		if err != nil {
+			log.Debugf("Error create user: %v", err)
+			sendResponse(conn, checkinMsg.WSResponse{
+				Ret:    "senduser",
+				Result: false,
+				Reason: 1,
+			})
+			return
+		}
+	}
+
 	sendResponse(conn, checkinMsg.WSResponse{
 		Ret:       "senduser",
 		Result:    true,

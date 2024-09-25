@@ -2,12 +2,15 @@ package server
 
 import (
 	"checkin/query"
+	"checkin/query/model"
 	checkinMsg "checkin/server/msg"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 func handleGetuserlist(conn *websocket.Conn, stn bool) {
@@ -65,6 +68,53 @@ func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 
 // handleSetuserinfo设置
 func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) {
+	sn, exists := clientsByConn[conn]
+	if !exists {
+		log.Warn("连接已断开")
+		return
+	}
+	ctx := context.Background()
+	userInfo, err := query.UserCheckinMachineInfo.WithContext(ctx).
+		Where(query.UserCheckinMachineInfo.Sn.Eq(sn),
+			query.UserCheckinMachineInfo.Enrollid.Eq(msg.Enrollid),
+			query.UserCheckinMachineInfo.Backupnum.Eq(msg.Backupnum),
+		).First()
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error("Error query user info")
+
+		} else {
+			return
+		}
+	}
+	recordStr := ""
+	switch v := msg.Record.(type) {
+	case float64:
+		recordStr = fmt.Sprintf("%.f", v) // 将数字转换为字符串
+	case string:
+		recordStr = v // 直接使用字符串
+	default:
+		recordStr = "" // 或者处理其他情况
+	}
+	if userInfo == nil {
+
+		err = query.UserCheckinMachineInfo.WithContext(ctx).Create(&model.UserCheckinMachineInfo{
+			Sn:        sn,
+			Enrollid:  msg.Enrollid,
+			Name:      msg.Name,
+			Backupnum: msg.Backupnum,
+			Status:    -1,
+			Record:    recordStr,
+		})
+		if err != nil {
+			log.Errorf("Error create user info: %v", err)
+		}
+	} else {
+		query.DB.Model(&userInfo).Updates(model.UserCheckinMachineInfo{
+			Name:   msg.Name,
+			Record: recordStr,
+		})
+	}
 	sendData(conn, msg)
 }
 
@@ -84,6 +134,12 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 		}
 	} else {
 		log.Printf("对设备[%s]下发用户信息[%d]成功", response.Sn, response.Enrollid)
+		query.UserCheckinMachineInfo.WithContext(context.Background()).Where(
+			query.UserCheckinMachineInfo.Sn.Eq(response.Sn),
+			query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
+			query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
+			query.UserCheckinMachineInfo.Status.Eq(-1),
+		).Update(query.UserCheckinMachineInfo.Status, 1)
 	}
 
 }

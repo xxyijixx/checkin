@@ -34,6 +34,7 @@ func newUserCheckinMachineInfo(db *gorm.DB, opts ...gen.DOOption) userCheckinMac
 	_userCheckinMachineInfo.Backupnum = field.NewInt(tableName, "backupnum")
 	_userCheckinMachineInfo.Admin = field.NewInt(tableName, "admin")
 	_userCheckinMachineInfo.Record = field.NewString(tableName, "record")
+	_userCheckinMachineInfo.Status = field.NewInt(tableName, "status")
 	_userCheckinMachineInfo.CreatedAt = field.NewTime(tableName, "created_at")
 	_userCheckinMachineInfo.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_userCheckinMachineInfo.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -54,6 +55,7 @@ type userCheckinMachineInfo struct {
 	Backupnum field.Int
 	Admin     field.Int
 	Record    field.String
+	Status    field.Int
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field
@@ -80,6 +82,7 @@ func (u *userCheckinMachineInfo) updateTableName(table string) *userCheckinMachi
 	u.Backupnum = field.NewInt(table, "backupnum")
 	u.Admin = field.NewInt(table, "admin")
 	u.Record = field.NewString(table, "record")
+	u.Status = field.NewInt(table, "status")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
@@ -111,7 +114,7 @@ func (u *userCheckinMachineInfo) GetFieldByName(fieldName string) (field.OrderEx
 }
 
 func (u *userCheckinMachineInfo) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 10)
+	u.fieldMap = make(map[string]field.Expr, 11)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["sn"] = u.Sn
 	u.fieldMap["enrollid"] = u.Enrollid
@@ -119,6 +122,7 @@ func (u *userCheckinMachineInfo) fillFieldMap() {
 	u.fieldMap["backupnum"] = u.Backupnum
 	u.fieldMap["admin"] = u.Admin
 	u.fieldMap["record"] = u.Record
+	u.fieldMap["status"] = u.Status
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt

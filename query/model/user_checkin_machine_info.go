@@ -14,6 +14,7 @@ type UserCheckinMachineInfo struct {
 	Backupnum int            `json:"backupnum"`
 	Admin     int            `json:"admin"`
 	Record    string         `json:"record"`
+	Status    int            `gorm:"comment:-1 未登记 0 禁用 1 启用; default:-1" json:"status"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at"`

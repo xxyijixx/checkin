@@ -46,8 +46,9 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 	}
 	logrus.Infof("处理设置用户: %+v", userInfo)
-	if userInfo.Name == "" || userInfo.Enrollid == 0 {
+	if userInfo.Name == "" || userInfo.Enrollid == 0 || userInfo.Backupnum == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
 	}
 	handleSetUserInfoAll(msg.SetuserinfoMessage{
 		Cmd:       CmdSetuserinfo,
@@ -64,10 +65,12 @@ func deleteUserHandle(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
 	}
 
 	if params.Enrollid == 0 || (params.Backupnum != 50 && (params.Backupnum < 0 || params.Backupnum > 13)) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
 	}
 	// handleDeleteuser()
 	handleDeleteuserAll(msg.DeleteuserMessage{

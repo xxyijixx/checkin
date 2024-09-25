@@ -39,9 +39,9 @@ type SendlogMessage struct {
 		Name       string `json:"name"`
 		Time       string `json:"time,omitempty"`
 		Mode       int    `json:"mode"`
+		Event      int    `json:"event"`
 		Verifymode int    `json:"verifymode"`
 		Image      string `json:"image"`
-		Time0      string `json:"time ,omitempty"`
 		Inout      int    `json:"inout,omitempty"`
 	} `json:"record"`
 }

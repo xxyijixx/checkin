@@ -68,8 +68,8 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 }
 
 func receiveSendlog(conn *websocket.Conn, msg []byte) {
-	var regMsg checkinMsg.SendlogMessage
-	if err := json.Unmarshal(msg, &regMsg); err != nil {
+	var sendlogMsg checkinMsg.SendlogMessage
+	if err := json.Unmarshal(msg, &sendlogMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
 		// 返回成功响应
 		sendData(conn, checkinMsg.WSResponse{
@@ -78,6 +78,27 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 			Reason: 1,
 		})
 		return
+	}
+	ctx := context.Background()
+
+	logRecord := make([]*model.UserCheckinMachineRecord, sendlogMsg.Count)
+	for i, record := range sendlogMsg.Record {
+		reportTime, err := time.Parse(time.DateTime, record.Time)
+		if err != nil {
+			reportTime = time.Now()
+		}
+		logRecord[i] = &model.UserCheckinMachineRecord{
+			Sn:         sendlogMsg.Sn,
+			Mode:       record.Mode,
+			Event:      record.Event,
+			Inout:      record.Inout,
+			ReportTime: reportTime,
+			Enrollid:   record.Enrollid,
+		}
+	}
+	err := query.UserCheckinMachineRecord.WithContext(ctx).Create(logRecord...)
+	if err != nil {
+		log.Errorf("记录考勤数据失败: %v", err)
 	}
 	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "sendlog",

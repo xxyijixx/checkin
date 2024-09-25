@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  mariadb:
+    image: mariadb:10.7.3
+    container_name: checkin-mariadb
+    restart: always
+    ports:
+      - "15666:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: HC8NjpCgBWM08Vor3Niv # 设置 root 用户的密码
+      MYSQL_DATABASE: checkin # 初始化的数据库名称
+      MYSQL_USER: checkin # 创建的用户
+      MYSQL_PASSWORD: 123456 # 用户的密码
+    networks:
+      - my_network
+    volumes:
+      - ./docker/mysql/repassword.sh:/etc/mysql/repassword.sh
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+      - ./docker/mysql/data:/var/lib/mysql # 数据持久化
+
+  app:
+    build:
+      context: . 
+      dockerfile: Dockerfile 
+    container_name: checkin-app
+    restart: always
+    ports:
+      - "7788:7788"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_HOST: mariadb 
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: checkin 
+      MYSQL_PASSWORD: 123456 
+      MYSQL_DB_NAME: checkin
+    networks:
+      - my_network
+    depends_on:
+      - mariadb
+
+networks:
+  my_network:
+    driver: bridge

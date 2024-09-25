@@ -21,13 +21,17 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 	if err := json.Unmarshal(msg, &regMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
 		// 返回成功响应
-		sendResponse(conn, checkinMsg.WSResponse{
+		sendData(conn, checkinMsg.WSResponse{
 			Ret:    "reg",
 			Result: false,
 			Reason: 1,
 		})
 		return
 	}
+	// 记录连接信息
+	clientsBySn[regMsg.Sn] = conn
+	clientsByConn[conn] = regMsg.Sn
+
 	checkinMachine, err := query.UserCheckinMachine.WithContext(context.Background()).
 		Where(query.UserCheckinMachine.Sn.Eq(regMsg.Sn)).
 		First()
@@ -44,7 +48,7 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 				Sn:      regMsg.Sn,
 				Devinfo: string(jsonData),
 			})
-		sendResponse(conn, checkinMsg.WSResponse{
+		sendData(conn, checkinMsg.WSResponse{
 			Ret:       "reg",
 			Result:    true,
 			Cloudtime: time.Now().Format(time.DateTime),
@@ -56,7 +60,7 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 		return
 	}
 	query.UserCheckinMachine.WithContext(context.Background()).Where(query.UserCheckinMachine.Sn.Eq(checkinMachine.Sn)).Update(query.UserCheckinMachine.Devinfo, jsonData)
-	sendResponse(conn, checkinMsg.WSResponse{
+	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "reg",
 		Result:    true,
 		Cloudtime: time.Now().Format(time.DateTime),
@@ -68,14 +72,14 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 	if err := json.Unmarshal(msg, &regMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
 		// 返回成功响应
-		sendResponse(conn, checkinMsg.WSResponse{
+		sendData(conn, checkinMsg.WSResponse{
 			Ret:    "sendlog",
 			Result: false,
 			Reason: 1,
 		})
 		return
 	}
-	sendResponse(conn, checkinMsg.WSResponse{
+	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "sendlog",
 		Result:    true,
 		Count:     1,
@@ -90,7 +94,7 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 	if err := json.Unmarshal(msg, &senduserMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
 		// 返回成功响应
-		sendResponse(conn, checkinMsg.WSResponse{
+		sendData(conn, checkinMsg.WSResponse{
 			Ret:    "senduser",
 			Result: false,
 			Reason: 1,
@@ -115,7 +119,7 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 		).First()
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
-			sendResponse(conn, checkinMsg.WSResponse{
+			sendData(conn, checkinMsg.WSResponse{
 				Ret:    "senduser",
 				Result: false,
 				Reason: 1,
@@ -135,7 +139,7 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 		})
 		if err != nil {
 			log.Debugf("Error create user: %v", err)
-			sendResponse(conn, checkinMsg.WSResponse{
+			sendData(conn, checkinMsg.WSResponse{
 				Ret:    "senduser",
 				Result: false,
 				Reason: 1,
@@ -144,7 +148,7 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 		}
 	}
 
-	sendResponse(conn, checkinMsg.WSResponse{
+	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "senduser",
 		Result:    true,
 		Cloudtime: time.Now().Format(time.DateTime),

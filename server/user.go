@@ -44,40 +44,67 @@ func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 
 }
 
-// HandleSetUserInfoAll 向所有已连接设备下发
+// HandleSetUserInfoAll 向所有设备下发
 func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 
-	for client := range clients {
-		if err := client.WriteJSON(msg); err != nil {
-			log.Println("Error sending message:", err)
-			client.Close()
-			delete(clients, client) // 移除失效的连接
+	machines, err := query.UserCheckinMachine.WithContext(context.Background()).Find()
+	if err != nil {
+		log.Errorf("Error query machines: %v", err)
+		return
+	}
+	for _, machine := range machines {
+		conn, exists := clientsBySn[machine.Sn]
+		if !exists {
+			log.Warnf("下发用户失败，设备[%s]未连接", machine.Sn)
+			continue
 		}
+		// clientsBySn
+		handleSetuserinfo(conn, msg)
 	}
 }
 
 // handleSetuserinfo设置
 func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) {
-	if err := conn.WriteJSON(msg); err != nil {
-		log.Println("Error sending message:", err)
-		conn.Close()
-		delete(clients, conn) // 移除失效的连接
-	}
+	sendData(conn, msg)
 }
 
 func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
-	_ = conn
+
 	var response checkinMsg.WSResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
+
 	if !response.Result {
-		log.Println("Error set user info:", response.Msg)
+		if sn := clientsByConn[conn]; sn != "" {
+			log.Warnf("对设备[%s]下发用户信息失败: %v", sn, response.Msg)
+		} else {
+			log.Println("Error set user info:", response.Msg)
+		}
 	} else {
 		log.Printf("对设备[%s]下发用户信息[%d]成功", response.Sn, response.Enrollid)
 	}
 
+}
+
+// HandleSetUserInfoAll 向所有设备下发
+func handleDeleteuserAll(msg checkinMsg.DeleteuserMessage) {
+
+	machines, err := query.UserCheckinMachine.WithContext(context.Background()).Find()
+	if err != nil {
+		log.Errorf("Error query machines: %v", err)
+		return
+	}
+	for _, machine := range machines {
+		conn, exists := clientsBySn[machine.Sn]
+		if !exists {
+			log.Warnf("删除用户失败，设备[%s]未连接", machine.Sn)
+			continue
+		}
+		// clientsBySn
+		handleDeleteuser(conn, msg)
+	}
 }
 
 // handleDeleteuser 处理删除用户信息
@@ -86,17 +113,16 @@ func handleDeleteuser(conn *websocket.Conn, msg checkinMsg.DeleteuserMessage) {
 }
 
 func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
-	_ = conn
-
 	var response checkinMsg.DeleteuserResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
+	sn := clientsByConn[conn]
 	if !response.Result {
-		log.Println("Error delete user info:", response.Reason)
+		log.Errorf("设备[%s]删除用户信息失败, 原因:%d", sn, response.Reason)
 	} else {
-		log.Printf("删除用户信息[%d]成功", response.Enrollid)
+		log.Printf("设备[%s]删除用户信息[%d]成功", sn, response.Enrollid)
 		if response.Backupnum == 13 {
 			// 全部删除
 			query.UserCheckinMachineInfo.WithContext(context.Background()).

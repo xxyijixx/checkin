@@ -47,7 +47,10 @@ func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 
 }
 
-// HandleSetUserInfoAll 向所有设备下发
+// HandleSetUserInfoAll 向所有设备下发,
+// 对于没有用户信息，目前为先添加数据，处理失败则删除未登记成功的数据(status为-1)，成功则更新状态，存在用户信息，更新信息
+// 现在更新信息会先更新数据库
+// TODO 后续数据保存于缓存/Redis，得到下发处理结果后再进行数据库更新
 func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 
 	machines, err := query.UserCheckinMachine.WithContext(context.Background()).Find()
@@ -129,6 +132,12 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 	if !response.Result {
 		if sn := clientsByConn[conn]; sn != "" {
 			log.Warnf("对设备[%s]下发用户信息失败: %v", sn, response.Msg)
+			query.UserCheckinMachineInfo.WithContext(context.Background()).Where(
+				query.UserCheckinMachineInfo.Sn.Eq(response.Sn),
+				query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
+				query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
+				query.UserCheckinMachineInfo.Status.Eq(-1),
+			).Delete()
 		} else {
 			log.Println("Error set user info:", response.Msg)
 		}

@@ -1,10 +1,13 @@
 package model
 
 import (
+	"checkin/config"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var TableNameCheckinDeviceUser = config.EnvConfig.DB_PREFIX + "checkin_users"
 
 type CheckinDeviceUser struct {
 	ID        int            `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
@@ -18,4 +21,8 @@ type CheckinDeviceUser struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at"`
+}
+
+func (*CheckinDeviceUser) TableName() string {
+	return TableNameCheckinDeviceUser
 }

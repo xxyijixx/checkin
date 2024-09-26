@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"checkin/config"
+	"time"
+)
+
+var TableNameCheckinDeviceRecord = config.EnvConfig.DB_PREFIX + "checkin_device_records"
 
 type CheckinDeviceRecord struct {
 	ID         int       `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
@@ -12,4 +17,8 @@ type CheckinDeviceRecord struct {
 	ReportTime time.Time `gorm:"comment:上报时间" json:"report_time"`
 	CreatedAt  time.Time `gorm:"comment:创建时间" json:"created_at"`
 	UpdatedAt  time.Time `gorm:"comment:更新时间" json:"updated_at"`
+}
+
+func (*CheckinDeviceRecord) TableName() string {
+	return TableNameCheckinDeviceRecord
 }

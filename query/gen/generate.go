@@ -7,6 +7,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 func main() {
@@ -18,9 +19,9 @@ func main() {
 	dsn := config.EnvConfig.GetDSN()
 	gormdb, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{
 
-		// NamingStrategy: schema.NamingStrategy{
-		// 	TablePrefix: "pre_",
-		// },
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix: config.EnvConfig.DB_PREFIX,
+		},
 	})
 
 	g.UseDB(gormdb) // reuse your gorm db

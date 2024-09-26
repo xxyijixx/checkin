@@ -37,6 +37,9 @@ var defaultConfig = envConfigSchema{
 
 	DB_PREFIX: "pre_",
 
+	REPORT_API: "http://127.0.0.1:2223/api/public/checkin/report",
+	REPORT_KEY: "2fc24d61be12502d4414503efb48308f",
+
 	MAX_REQUEST_BODY_SIZE: 200 * 1024 * 1024,
 }
 
@@ -50,6 +53,9 @@ type envConfigSchema struct {
 	MYSQL_DB_NAME  string
 
 	DB_PREFIX string
+
+	REPORT_API string
+	REPORT_KEY string
 
 	MAX_REQUEST_BODY_SIZE int
 }

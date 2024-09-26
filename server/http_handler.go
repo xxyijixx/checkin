@@ -36,7 +36,7 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func listUserHandle(w http.ResponseWriter, r *http.Request) {
-
+	handleGetuserlistRandomDevice()
 }
 
 func setUserHandle(w http.ResponseWriter, r *http.Request) {

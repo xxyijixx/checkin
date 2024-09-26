@@ -1,12 +1,14 @@
 package server
 
 import (
+	"checkin/config"
 	"checkin/query"
 	"checkin/query/model"
 	checkinMsg "checkin/server/msg"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -95,11 +97,19 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 			ReportTime: reportTime,
 			Enrollid:   record.Enrollid,
 		}
+		// 推送考勤信息
+		mac := fmt.Sprintf("checkin-%d", record.Enrollid)
+		url := fmt.Sprintf("%s?key=%s&mac=%s&time=%d", config.EnvConfig.REPORT_API, config.EnvConfig.REPORT_KEY, mac, time.Now().Unix())
+		_, err = http.Post(url, "", nil)
+		if err != nil {
+			log.Println("推送考勤信息失败,", err)
+		}
 	}
 	err := query.CheckinDeviceRecord.WithContext(ctx).Create(logRecord...)
 	if err != nil {
 		log.Errorf("记录考勤数据失败: %v", err)
 	}
+
 	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "sendlog",
 		Result:    true,

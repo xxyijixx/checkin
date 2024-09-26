@@ -13,6 +13,18 @@ import (
 	"gorm.io/gorm"
 )
 
+func handleGetuserlistRandomDevice() {
+	device, err := query.CheckinDevice.WithContext(context.Background()).First()
+	if err != nil {
+		log.Debugf("Error query device info")
+		return
+	}
+	conn, exists := clientsBySn[device.Sn]
+	if exists {
+		handleGetuserlist(conn, true)
+	}
+}
+
 func handleGetuserlist(conn *websocket.Conn, stn bool) {
 	sendData(conn, checkinMsg.GetuserlistMessage{
 		Cmd: CmdGetuserlist,

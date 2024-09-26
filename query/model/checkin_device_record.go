@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-type UserCheckinMachineRecord struct {
+type CheckinDeviceRecord struct {
 	ID         int       `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	Sn         string    `gorm:"comment:设备序列号; size:255" json:"sn"`
 	Mode       int       `json:"mode"`

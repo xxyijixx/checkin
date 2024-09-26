@@ -16,44 +16,44 @@ import (
 )
 
 var (
-	Q                        = new(Query)
-	UserCheckinMachine       *userCheckinMachine
-	UserCheckinMachineInfo   *userCheckinMachineInfo
-	UserCheckinMachineRecord *userCheckinMachineRecord
+	Q                   = new(Query)
+	CheckinDevice       *checkinDevice
+	CheckinDeviceRecord *checkinDeviceRecord
+	CheckinDeviceUser   *checkinDeviceUser
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
-	UserCheckinMachine = &Q.UserCheckinMachine
-	UserCheckinMachineInfo = &Q.UserCheckinMachineInfo
-	UserCheckinMachineRecord = &Q.UserCheckinMachineRecord
+	CheckinDevice = &Q.CheckinDevice
+	CheckinDeviceRecord = &Q.CheckinDeviceRecord
+	CheckinDeviceUser = &Q.CheckinDeviceUser
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                       db,
-		UserCheckinMachine:       newUserCheckinMachine(db, opts...),
-		UserCheckinMachineInfo:   newUserCheckinMachineInfo(db, opts...),
-		UserCheckinMachineRecord: newUserCheckinMachineRecord(db, opts...),
+		db:                  db,
+		CheckinDevice:       newCheckinDevice(db, opts...),
+		CheckinDeviceRecord: newCheckinDeviceRecord(db, opts...),
+		CheckinDeviceUser:   newCheckinDeviceUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	UserCheckinMachine       userCheckinMachine
-	UserCheckinMachineInfo   userCheckinMachineInfo
-	UserCheckinMachineRecord userCheckinMachineRecord
+	CheckinDevice       checkinDevice
+	CheckinDeviceRecord checkinDeviceRecord
+	CheckinDeviceUser   checkinDeviceUser
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                       db,
-		UserCheckinMachine:       q.UserCheckinMachine.clone(db),
-		UserCheckinMachineInfo:   q.UserCheckinMachineInfo.clone(db),
-		UserCheckinMachineRecord: q.UserCheckinMachineRecord.clone(db),
+		db:                  db,
+		CheckinDevice:       q.CheckinDevice.clone(db),
+		CheckinDeviceRecord: q.CheckinDeviceRecord.clone(db),
+		CheckinDeviceUser:   q.CheckinDeviceUser.clone(db),
 	}
 }
 
@@ -67,24 +67,24 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                       db,
-		UserCheckinMachine:       q.UserCheckinMachine.replaceDB(db),
-		UserCheckinMachineInfo:   q.UserCheckinMachineInfo.replaceDB(db),
-		UserCheckinMachineRecord: q.UserCheckinMachineRecord.replaceDB(db),
+		db:                  db,
+		CheckinDevice:       q.CheckinDevice.replaceDB(db),
+		CheckinDeviceRecord: q.CheckinDeviceRecord.replaceDB(db),
+		CheckinDeviceUser:   q.CheckinDeviceUser.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	UserCheckinMachine       IUserCheckinMachineDo
-	UserCheckinMachineInfo   IUserCheckinMachineInfoDo
-	UserCheckinMachineRecord IUserCheckinMachineRecordDo
+	CheckinDevice       ICheckinDeviceDo
+	CheckinDeviceRecord ICheckinDeviceRecordDo
+	CheckinDeviceUser   ICheckinDeviceUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		UserCheckinMachine:       q.UserCheckinMachine.WithContext(ctx),
-		UserCheckinMachineInfo:   q.UserCheckinMachineInfo.WithContext(ctx),
-		UserCheckinMachineRecord: q.UserCheckinMachineRecord.WithContext(ctx),
+		CheckinDevice:       q.CheckinDevice.WithContext(ctx),
+		CheckinDeviceRecord: q.CheckinDeviceRecord.WithContext(ctx),
+		CheckinDeviceUser:   q.CheckinDeviceUser.WithContext(ctx),
 	}
 }
 

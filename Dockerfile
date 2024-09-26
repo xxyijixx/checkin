@@ -17,24 +17,25 @@ RUN go mod download
 COPY . .
 
 # 构建主程序
-RUN go build -o main main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
 
 # 构建数据库迁移工具
-RUN go build -o migrate ./query/migrate/migrate.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o migrate ./query/migrate/migrate.go
 
-# # 运行时镜像
-# FROM alpine:latest
+# 运行时镜像
+FROM alpine:latest
 
-# # 设置工作目录
-# WORKDIR /app
+# 设置工作目录
+WORKDIR /app
 
-# # 复制构建好的二进制文件
-# COPY --from=builder /app/main .
-# COPY --from=builder /app/migrate .
+# 复制构建好的二进制文件
+COPY --from=builder /app/main .
+COPY --from=builder /app/migrate .
 
 
-# RUN chmod +x /app/main
-# RUN chmod +x /app/migrate
+RUN chmod +x /app/main
+RUN chmod +x /app/migrate
 
 # 指定默认命令
-CMD ["sh", "-c", "./migrate && ./main"]
+CMD ["/app/migrate", "&&", "/app/main"]
+

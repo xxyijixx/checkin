@@ -32,8 +32,8 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 	clientsBySn[regMsg.Sn] = conn
 	clientsByConn[conn] = regMsg.Sn
 
-	checkinMachine, err := query.UserCheckinMachine.WithContext(context.Background()).
-		Where(query.UserCheckinMachine.Sn.Eq(regMsg.Sn)).
+	checkinMachine, err := query.CheckinDevice.WithContext(context.Background()).
+		Where(query.CheckinDevice.Sn.Eq(regMsg.Sn)).
 		First()
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
@@ -43,8 +43,8 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 		if err != nil {
 			return
 		}
-		query.UserCheckinMachine.WithContext(context.Background()).
-			Create(&model.UserCheckinMachine{
+		query.CheckinDevice.WithContext(context.Background()).
+			Create(&model.CheckinDevice{
 				Sn:      regMsg.Sn,
 				Devinfo: string(jsonData),
 			})
@@ -59,7 +59,7 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 	if err != nil {
 		return
 	}
-	query.UserCheckinMachine.WithContext(context.Background()).Where(query.UserCheckinMachine.Sn.Eq(checkinMachine.Sn)).Update(query.UserCheckinMachine.Devinfo, jsonData)
+	query.CheckinDevice.WithContext(context.Background()).Where(query.CheckinDevice.Sn.Eq(checkinMachine.Sn)).Update(query.CheckinDevice.Devinfo, jsonData)
 	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "reg",
 		Result:    true,
@@ -81,13 +81,13 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 	}
 	ctx := context.Background()
 
-	logRecord := make([]*model.UserCheckinMachineRecord, sendlogMsg.Count)
+	logRecord := make([]*model.CheckinDeviceRecord, sendlogMsg.Count)
 	for i, record := range sendlogMsg.Record {
 		reportTime, err := time.Parse(time.DateTime, record.Time)
 		if err != nil {
 			reportTime = time.Now()
 		}
-		logRecord[i] = &model.UserCheckinMachineRecord{
+		logRecord[i] = &model.CheckinDeviceRecord{
 			Sn:         sendlogMsg.Sn,
 			Mode:       record.Mode,
 			Event:      record.Event,
@@ -96,7 +96,7 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 			Enrollid:   record.Enrollid,
 		}
 	}
-	err := query.UserCheckinMachineRecord.WithContext(ctx).Create(logRecord...)
+	err := query.CheckinDeviceRecord.WithContext(ctx).Create(logRecord...)
 	if err != nil {
 		log.Errorf("记录考勤数据失败: %v", err)
 	}
@@ -133,10 +133,10 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 	}
 	fmt.Println("接收Message:", senduserMsg)
 	ctx := context.Background()
-	userInfo, err := query.UserCheckinMachineInfo.WithContext(ctx).
-		Where(query.UserCheckinMachineInfo.Enrollid.Eq(senduserMsg.Enrollid),
-			query.UserCheckinMachineInfo.Backupnum.Eq(senduserMsg.Backupnum),
-			query.UserCheckinMachineInfo.Sn.Eq(senduserMsg.Sn),
+	userInfo, err := query.CheckinDeviceUser.WithContext(ctx).
+		Where(query.CheckinDeviceUser.Enrollid.Eq(senduserMsg.Enrollid),
+			query.CheckinDeviceUser.Backupnum.Eq(senduserMsg.Backupnum),
+			query.CheckinDeviceUser.Sn.Eq(senduserMsg.Sn),
 		).First()
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
@@ -151,7 +151,7 @@ func receiveSenduser(conn *websocket.Conn, msg []byte) {
 	// 用户信息未记录
 	if userInfo == nil {
 		log.Debugf("用户信息未登记: %+v", senduserMsg)
-		err = query.UserCheckinMachineInfo.WithContext(ctx).Create(&model.UserCheckinMachineInfo{
+		err = query.CheckinDeviceUser.WithContext(ctx).Create(&model.CheckinDeviceUser{
 			Sn:        senduserMsg.Sn,
 			Enrollid:  senduserMsg.Enrollid,
 			Name:      senduserMsg.Name,

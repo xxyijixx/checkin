@@ -53,7 +53,7 @@ func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 // TODO 后续数据保存于缓存/Redis，得到下发处理结果后再进行数据库更新
 func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 
-	machines, err := query.UserCheckinMachine.WithContext(context.Background()).Find()
+	machines, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
 		return
@@ -77,10 +77,10 @@ func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) 
 		return
 	}
 	ctx := context.Background()
-	userInfo, err := query.UserCheckinMachineInfo.WithContext(ctx).
-		Where(query.UserCheckinMachineInfo.Sn.Eq(sn),
-			query.UserCheckinMachineInfo.Enrollid.Eq(msg.Enrollid),
-			query.UserCheckinMachineInfo.Backupnum.Eq(msg.Backupnum),
+	userInfo, err := query.CheckinDeviceUser.WithContext(ctx).
+		Where(query.CheckinDeviceUser.Sn.Eq(sn),
+			query.CheckinDeviceUser.Enrollid.Eq(msg.Enrollid),
+			query.CheckinDeviceUser.Backupnum.Eq(msg.Backupnum),
 		).First()
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -101,7 +101,7 @@ func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) 
 	}
 	if userInfo == nil {
 
-		err = query.UserCheckinMachineInfo.WithContext(ctx).Create(&model.UserCheckinMachineInfo{
+		err = query.CheckinDeviceUser.WithContext(ctx).Create(&model.CheckinDeviceUser{
 			Sn:        sn,
 			Enrollid:  msg.Enrollid,
 			Name:      msg.Name,
@@ -113,7 +113,7 @@ func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) 
 			log.Errorf("Error create user info: %v", err)
 		}
 	} else {
-		query.DB.Model(&userInfo).Updates(model.UserCheckinMachineInfo{
+		query.DB.Model(&userInfo).Updates(model.CheckinDeviceUser{
 			Name:   msg.Name,
 			Record: recordStr,
 		})
@@ -132,23 +132,23 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 	if !response.Result {
 		if sn := clientsByConn[conn]; sn != "" {
 			log.Warnf("对设备[%s]下发用户信息失败: %v", sn, response.Msg)
-			query.UserCheckinMachineInfo.WithContext(context.Background()).Where(
-				query.UserCheckinMachineInfo.Sn.Eq(response.Sn),
-				query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
-				query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
-				query.UserCheckinMachineInfo.Status.Eq(-1),
+			query.CheckinDeviceUser.WithContext(context.Background()).Where(
+				query.CheckinDeviceUser.Sn.Eq(response.Sn),
+				query.CheckinDeviceUser.Enrollid.Eq(response.Enrollid),
+				query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
+				query.CheckinDeviceUser.Status.Eq(-1),
 			).Delete()
 		} else {
 			log.Println("Error set user info:", response.Msg)
 		}
 	} else {
 		log.Printf("对设备[%s]下发用户信息[%d]成功", response.Sn, response.Enrollid)
-		query.UserCheckinMachineInfo.WithContext(context.Background()).Where(
-			query.UserCheckinMachineInfo.Sn.Eq(response.Sn),
-			query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
-			query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
-			query.UserCheckinMachineInfo.Status.Eq(-1),
-		).Update(query.UserCheckinMachineInfo.Status, 1)
+		query.CheckinDeviceUser.WithContext(context.Background()).Where(
+			query.CheckinDeviceUser.Sn.Eq(response.Sn),
+			query.CheckinDeviceUser.Enrollid.Eq(response.Enrollid),
+			query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
+			query.CheckinDeviceUser.Status.Eq(-1),
+		).Update(query.CheckinDeviceUser.Status, 1)
 	}
 
 }
@@ -156,7 +156,7 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 // HandleSetUserInfoAll 向所有设备下发
 func handleDeleteuserAll(msg checkinMsg.DeleteuserMessage) {
 
-	machines, err := query.UserCheckinMachine.WithContext(context.Background()).Find()
+	machines, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
 		return
@@ -190,13 +190,13 @@ func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
 		log.Printf("设备[%s]删除用户信息[%d]成功", sn, response.Enrollid)
 		if response.Backupnum == 13 {
 			// 全部删除
-			query.UserCheckinMachineInfo.WithContext(context.Background()).
-				Where(query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid)).Delete()
+			query.CheckinDeviceUser.WithContext(context.Background()).
+				Where(query.CheckinDeviceUser.Enrollid.Eq(response.Enrollid)).Delete()
 		} else {
-			query.UserCheckinMachineInfo.WithContext(context.Background()).
+			query.CheckinDeviceUser.WithContext(context.Background()).
 				Where(
-					query.UserCheckinMachineInfo.Enrollid.Eq(response.Enrollid),
-					query.UserCheckinMachineInfo.Backupnum.Eq(response.Backupnum),
+					query.CheckinDeviceUser.Enrollid.Eq(response.Enrollid),
+					query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
 				).Delete()
 		}
 	}

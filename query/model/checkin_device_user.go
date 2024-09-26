@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserCheckinMachineInfo struct {
+type CheckinDeviceUser struct {
 	ID        int            `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	Sn        string         `gorm:"size:255" json:"sn"`
 	Enrollid  int            `json:"enrollid"`

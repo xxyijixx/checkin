@@ -113,7 +113,7 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "sendlog",
 		Result:    true,
-		Count:     1,
+		Count:     sendlogMsg.Count,
 		Logindex:  0,
 		Cloudtime: time.Now().Format(time.DateTime),
 		Access:    1,

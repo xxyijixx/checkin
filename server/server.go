@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,6 +33,12 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+
+var (
+	GlobalCache            = cache.New(5*time.Minute, 10*time.Minute)
+	CacheLock              = sync.Mutex{}
+	CacheDefaultExpiration = 3 * time.Minute
+)
 
 // 命令处理函数类型
 type cmdHandlerFunc func(conn *websocket.Conn, msg []byte)
@@ -60,6 +69,44 @@ func sendData(conn *websocket.Conn, data interface{}) {
 		delete(clientsBySn, sn)
 		delete(clientsByConn, conn)
 	}
+}
+
+type RetMessage struct {
+	RoutingKey string
+	Data       interface{}
+}
+
+var MessagesChan = make(chan RetMessage, 100) // 缓冲区大小为 100
+
+func waitForResponse(routingKey string) <-chan interface{} {
+	responseChan := make(chan interface{})
+
+	go func() {
+		for {
+			msg := <-MessagesChan
+			if msg.RoutingKey == routingKey {
+				responseChan <- &msg.Data
+				break
+			}
+		}
+	}()
+
+	return responseChan
+}
+
+func waitForResponses(routingKey string, count int, timeout time.Duration) ([]interface{}, error) {
+	responses := make([]interface{}, 0, count)
+	timeoutChan := time.After(timeout)
+
+	for i := 0; i < count; i++ {
+		select {
+		case <-timeoutChan:
+			return nil, fmt.Errorf("timeout waiting for device response")
+		case response := <-waitForResponse(routingKey):
+			responses = append(responses, response)
+		}
+	}
+	return responses, nil
 }
 
 // WebSocket 处理函数

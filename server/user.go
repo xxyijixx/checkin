@@ -69,20 +69,29 @@ func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 // TODO 后续数据保存于缓存/Redis，得到下发处理结果后再进行数据库更新
 func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 
-	machines, err := query.CheckinDevice.WithContext(context.Background()).Find()
+	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
 		return
 	}
-	for _, machine := range machines {
-		conn, exists := clientsBySn[machine.Sn]
+	routingKey := fmt.Sprintf("setuserinfo-%d-%d", msg.Enrollid, msg.Backupnum)
+	GlobalCache.Set(routingKey, len(devices), CacheDefaultExpiration)
+	for _, device := range devices {
+		conn, exists := clientsBySn[device.Sn]
 		if !exists {
-			log.Warnf("下发用户失败，设备[%s]未连接", machine.Sn)
+			log.Warnf("下发用户失败，设备[%s]未连接", device.Sn)
 			continue
 		}
 		// clientsBySn
-		handleSetuserinfo(conn, msg)
+		go handleSetuserinfo(conn, msg)
 	}
+	// 等待处理
+	response, err := waitForResponses(routingKey, len(devices)*2, CacheDefaultExpiration)
+	if err != nil {
+		return
+	}
+	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	fmt.Println("处理结果:", string(jsonData))
 }
 
 // handleSetuserinfo设置
@@ -167,6 +176,18 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 		).Update(query.CheckinDeviceUser.Status, 1)
 	}
 
+	MessagesChan <- RetMessage{
+		RoutingKey: fmt.Sprintf("setuserinfo-%d-%d", response.Enrollid, response.Backupnum),
+		Data: map[string]string{
+			"Hello": "World",
+		},
+	}
+	MessagesChan <- RetMessage{
+		RoutingKey: fmt.Sprintf("setuserinfo-%d-%d", response.Enrollid, response.Backupnum),
+		Data: map[string]string{
+			"Hello": "World2",
+		},
+	}
 }
 
 // HandleSetUserInfoAll 向所有设备下发

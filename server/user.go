@@ -7,24 +7,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
+// handleGeuserlistRandomDevice 从已连接的设备中随机请求设备获取用户数据
 func handleGetuserlistRandomDevice() {
-	device, err := query.CheckinDevice.WithContext(context.Background()).First()
-	if err != nil {
-		log.Debugf("Error query device info")
-		return
+
+	deviceSn := make([]string, len(clientsBySn))
+	for sn := range clientsBySn {
+		deviceSn = append(deviceSn, sn)
 	}
-	conn, exists := clientsBySn[device.Sn]
-	if exists {
-		handleGetuserlist(conn, true)
-	}
+	randomKey := rand.Intn(len(deviceSn))
+	conn := clientsBySn[deviceSn[randomKey]]
+
+	handleGetuserlist(conn, true)
 }
 
+// handleGetuserlist 处理获取用户数据
+// @description 处理获取用户数据
 func handleGetuserlist(conn *websocket.Conn, stn bool) {
 	sendData(conn, checkinMsg.GetuserlistMessage{
 		Cmd: CmdGetuserlist,

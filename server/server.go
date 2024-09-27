@@ -20,6 +20,7 @@ const (
 	CmdGetuserinfo = "getuserinfo"
 	CmdSetuserinfo = "setuserinfo"
 	CmdDeleteuser  = "deleteuser"
+	CmdEnableuser  = "enableuser"
 )
 
 // 创建一个 WebSocket 升级器
@@ -47,6 +48,7 @@ var receives = map[string]cmdReceiverFunc{
 	"getuserinfo": receiveGetuserinfo,
 	"setuserinfo": receiveSetuserinfo,
 	"deleteuser":  receiveDeleteuser,
+	"enableuser":  receiveEnableuser,
 }
 
 func sendData(conn *websocket.Conn, data interface{}) {
@@ -117,6 +119,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func Run() {
+	http.HandleFunc("/user/enable", UserStatusHandle)
 	http.HandleFunc("/user", UserHandle)
 	// 设置路由，定义 WebSocket 处理路径
 	http.HandleFunc("/", wsHandler)

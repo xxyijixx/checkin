@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type SetUserInfo struct {
@@ -19,6 +19,11 @@ type SetUserInfo struct {
 type DeleteUserParams struct {
 	Enrollid  int `json:"enrollid"`
 	Backupnum int `json:"backupnum"`
+}
+
+type EnableUserParams struct {
+	Enrollid int `json:"enrollid"`
+	Enflag   int `json:"enflag"`
 }
 
 func UserHandle(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +40,25 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func UserStatusHandle(w http.ResponseWriter, r *http.Request) {
+	log.Println("设置用户状态")
+	var params EnableUserParams
+	err := json.NewDecoder(r.Body).Decode(&params)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	if params.Enrollid == 0 || (params.Enflag != 0 && params.Enflag != 1) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	handleEnableuserAll(msg.EnableuserMessage{
+		Cmd:      CmdEnableuser,
+		Enrollid: params.Enrollid,
+		Enflag:   params.Enflag,
+	})
+}
+
 func listUserHandle(w http.ResponseWriter, r *http.Request) {
 	handleGetuserlistRandomDevice()
 }
@@ -45,7 +69,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 	}
-	logrus.Infof("处理设置用户: %+v", userInfo)
+	log.Infof("处理设置用户: %+v", userInfo)
 	if userInfo.Name == "" || userInfo.Enrollid == 0 || userInfo.Backupnum == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

@@ -97,6 +97,11 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 			ReportTime: reportTime,
 			Enrollid:   record.Enrollid,
 		}
+
+		if record.Event == 15 {
+			log.Debugf("该用户被禁用,userid=%d", record.Enrollid)
+			continue
+		}
 		// 推送考勤信息
 		mac := fmt.Sprintf("checkin-%d", record.Enrollid)
 		url := fmt.Sprintf("%s?key=%s&mac=%s&time=%d", config.EnvConfig.REPORT_API, config.EnvConfig.REPORT_KEY, mac, time.Now().Unix())

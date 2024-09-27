@@ -213,3 +213,40 @@ func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
 		}
 	}
 }
+
+// handleEnableuserAll 对所有设备更新用户状态
+func handleEnableuserAll(msg checkinMsg.EnableuserMessage) {
+	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
+	if err != nil {
+		log.Errorf("Error query machines: %v", err)
+		return
+	}
+	for _, device := range devices {
+		conn, exists := clientsBySn[device.Sn]
+		if !exists {
+			log.Warnf("设置用户状态失败，设备[%s]未连接", device.Sn)
+			continue
+		}
+		// clientsBySn
+		handleEnableuser(conn, msg)
+	}
+}
+
+func handleEnableuser(conn *websocket.Conn, msg checkinMsg.EnableuserMessage) {
+	sendData(conn, msg)
+}
+
+func receiveEnableuser(conn *websocket.Conn, msg []byte) {
+	var response checkinMsg.EnableuserResponse
+	if err := json.Unmarshal(msg, &response); err != nil {
+		log.Printf("JSON unmarshal error: %v", err)
+		return
+	}
+	sn := clientsByConn[conn]
+	if !response.Result {
+		log.Errorf("设备[%s]设置用户状态失败, 原因:%d", sn, response.Reason)
+	} else {
+		log.Printf("设备[%s]设置用户状态成功", sn)
+	}
+
+}

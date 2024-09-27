@@ -122,3 +122,16 @@ type DeleteuserResponse struct {
 	Result    bool   `json:"result"`
 	Reason    int    `json:"reason"`
 }
+
+// EnableuserMessage 用户启用、禁用消息
+type EnableuserMessage struct {
+	Cmd      string `json:"cmd"`
+	Enrollid int    `json:"enrollid"`
+	Enflag   int    `json:"enflag"`
+}
+
+type EnableuserResponse struct {
+	Ret    string `json:"ret"`
+	Result bool   `json:"result"`
+	Reason int    `json:"reason,omitempty"`
+}

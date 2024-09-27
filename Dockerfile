@@ -25,6 +25,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o migrate ./query/migrate/migrate.go
 # 运行时镜像
 FROM alpine:latest
 
+# 安装 tzdata 包
+RUN apk add --no-cache tzdata
+
 # 设置工作目录
 WORKDIR /app
 
@@ -37,5 +40,5 @@ RUN chmod +x /app/main
 RUN chmod +x /app/migrate
 
 # 指定默认命令
-CMD ["/app/migrate", "&&", "/app/main"]
+CMD ["/app/main"]
 

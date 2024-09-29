@@ -3,6 +3,7 @@ package server
 import (
 	"checkin/query"
 	"checkin/query/model"
+	"checkin/server/common"
 	checkinMsg "checkin/server/msg"
 	"context"
 	"encoding/json"
@@ -67,12 +68,12 @@ func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 // 对于没有用户信息，目前为先添加数据，处理失败则删除未登记成功的数据(status为-1)，成功则更新状态，存在用户信息，更新信息
 // 现在更新信息会先更新数据库
 // TODO 后续数据保存于缓存/Redis，得到下发处理结果后再进行数据库更新
-func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
+func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) *common.RetMessage[checkinMsg.RetSetuserinfo] {
 
 	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
-		return
+		return common.Error[checkinMsg.RetSetuserinfo]("获取设备信息失败")
 	}
 	routingKey := fmt.Sprintf("setuserinfo-%d-%d", msg.Enrollid, msg.Backupnum)
 	GlobalCache.Set(routingKey, len(devices), CacheDefaultExpiration)
@@ -86,12 +87,22 @@ func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) {
 		go handleSetuserinfo(conn, msg)
 	}
 	// 等待处理
-	response, err := waitForResponses(routingKey, len(devices)*2, CacheDefaultExpiration)
+	response, err := waitForResponses[checkinMsg.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
 	if err != nil {
-		return
+		return common.Error[checkinMsg.RetSetuserinfo]("上传失败")
 	}
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	fmt.Println("处理结果:", string(jsonData))
+	data := checkinMsg.RetSetuserinfo{
+		Result: true,
+	}
+	for _, res := range response {
+		if res.Ret != 1 {
+			data.Reason = res.Reason
+			data.Result = false
+			return common.ErrorWithData(res.Msg, data)
+		}
+	}
+
+	return common.SuccessWithData(data)
 }
 
 // handleSetuserinfo设置
@@ -154,6 +165,8 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 		return
 	}
 
+	ret := checkinMsg.RetDeviceSetuserinfo{}
+
 	if !response.Result {
 		if sn := clientsByConn[conn]; sn != "" {
 			log.Warnf("对设备[%s]下发用户信息失败: %v", sn, response.Msg)
@@ -163,6 +176,10 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 				query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
 				query.CheckinDeviceUser.Status.Eq(-1),
 			).Delete()
+
+			ret.Msg = response.Msg
+			ret.Reason = response.Reason
+			ret.Ret = 0
 		} else {
 			log.Println("Error set user info:", response.Msg)
 		}
@@ -174,39 +191,57 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 			query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
 			query.CheckinDeviceUser.Status.Eq(-1),
 		).Update(query.CheckinDeviceUser.Status, 1)
+		ret.Msg = "success"
+		ret.Ret = 1
+	}
+
+	jsonData, err := json.Marshal(ret)
+	if err != nil {
+		log.Debugf("Marshal json error %v", err)
 	}
 
 	MessagesChan <- RetMessage{
 		RoutingKey: fmt.Sprintf("setuserinfo-%d-%d", response.Enrollid, response.Backupnum),
-		Data: map[string]string{
-			"Hello": "World",
-		},
-	}
-	MessagesChan <- RetMessage{
-		RoutingKey: fmt.Sprintf("setuserinfo-%d-%d", response.Enrollid, response.Backupnum),
-		Data: map[string]string{
-			"Hello": "World2",
-		},
+		Data:       string(jsonData),
+		RetryCount: 0,
 	}
 }
 
 // HandleSetUserInfoAll 向所有设备下发
-func handleDeleteuserAll(msg checkinMsg.DeleteuserMessage) {
+func handleDeleteuserAll(msg checkinMsg.DeleteuserMessage) *common.RetMessage[checkinMsg.RetSetuserinfo] {
 
-	machines, err := query.CheckinDevice.WithContext(context.Background()).Find()
+	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
-		log.Errorf("Error query machines: %v", err)
-		return
+		log.Errorf("Error query devices: %v", err)
+		return common.Error[checkinMsg.RetSetuserinfo]("获取设备信息失败")
 	}
-	for _, machine := range machines {
-		conn, exists := clientsBySn[machine.Sn]
+	routingKey := fmt.Sprintf("deleteuser-%d-%d", msg.Enrollid, msg.Backupnum)
+	for _, device := range devices {
+		conn, exists := clientsBySn[device.Sn]
 		if !exists {
-			log.Warnf("删除用户失败，设备[%s]未连接", machine.Sn)
+			log.Warnf("删除用户失败，设备[%s]未连接", device.Sn)
 			continue
 		}
 		// clientsBySn
 		handleDeleteuser(conn, msg)
 	}
+	// 等待处理
+	response, err := waitForResponses[checkinMsg.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
+	if err != nil {
+		return common.Error[checkinMsg.RetSetuserinfo]("处理失败")
+	}
+	data := checkinMsg.RetSetuserinfo{
+		Result: true,
+	}
+	for _, res := range response {
+		if res.Ret != 1 {
+			data.Reason = res.Reason
+			data.Result = false
+			return common.ErrorWithData(res.Msg, data)
+		}
+	}
+
+	return common.SuccessWithData(data)
 }
 
 // handleDeleteuser 处理删除用户信息
@@ -220,9 +255,13 @@ func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
+	ret := checkinMsg.RetDeviceSetuserinfo{}
 	sn := clientsByConn[conn]
 	if !response.Result {
 		log.Errorf("设备[%s]删除用户信息失败, 原因:%d", sn, response.Reason)
+		ret.Msg = "error"
+		ret.Reason = response.Reason
+		ret.Ret = 0
 	} else {
 		log.Printf("设备[%s]删除用户信息[%d]成功", sn, response.Enrollid)
 		if response.Backupnum == 13 {
@@ -236,6 +275,18 @@ func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
 					query.CheckinDeviceUser.Backupnum.Eq(response.Backupnum),
 				).Delete()
 		}
+		ret.Msg = "success"
+		ret.Ret = 1
+	}
+	jsonData, err := json.Marshal(ret)
+	if err != nil {
+		log.Debugf("Marshal json error %v", err)
+	}
+
+	MessagesChan <- RetMessage{
+		RoutingKey: fmt.Sprintf("deleteuser-%d-%d", response.Enrollid, response.Backupnum),
+		Data:       string(jsonData),
+		RetryCount: 0,
 	}
 }
 

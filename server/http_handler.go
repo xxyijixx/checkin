@@ -74,7 +74,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	handleSetUserInfoAll(msg.SetuserinfoMessage{
+	ret := handleSetUserInfoAll(msg.SetuserinfoMessage{
 		Cmd:       CmdSetuserinfo,
 		Name:      userInfo.Name,
 		Enrollid:  userInfo.Enrollid,
@@ -82,6 +82,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 		Admin:     userInfo.Admin,
 		Record:    userInfo.Record,
 	})
+	sendJsonData(w, ret)
 }
 
 func deleteUserHandle(w http.ResponseWriter, r *http.Request) {
@@ -97,10 +98,22 @@ func deleteUserHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// handleDeleteuser()
-	handleDeleteuserAll(msg.DeleteuserMessage{
+	ret := handleDeleteuserAll(msg.DeleteuserMessage{
 		Cmd:       CmdDeleteuser,
 		Enrollid:  params.Enrollid,
 		Backupnum: params.Backupnum,
 	})
+	sendJsonData(w, ret)
 
+}
+
+func sendJsonData(w http.ResponseWriter, data interface{}) {
+	log.Debugf("返回数据 %+v", data)
+	// 设置响应头的内容类型为 JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	// 将数据编码为 JSON 并写入响应
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

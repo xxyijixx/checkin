@@ -73,20 +73,34 @@ func sendData(conn *websocket.Conn, data interface{}) {
 
 type RetMessage struct {
 	RoutingKey string
-	Data       interface{}
+	Data       string
+	RetryCount int
 }
 
 var MessagesChan = make(chan RetMessage, 100) // 缓冲区大小为 100
 
-func waitForResponse(routingKey string) <-chan interface{} {
-	responseChan := make(chan interface{})
+func waitForResponse[T any](routingKey string) <-chan T {
+	responseChan := make(chan T)
 
 	go func() {
 		for {
 			msg := <-MessagesChan
 			if msg.RoutingKey == routingKey {
-				responseChan <- &msg.Data
+				var res T
+				err := json.Unmarshal([]byte(msg.Data), &res)
+				if err != nil {
+					log.Debugf("Unmarshal json error")
+					continue
+				}
+				responseChan <- res
 				break
+			} else {
+				if msg.RetryCount > 100 {
+					log.Debugf("RoutingKey [%s] retry count over 100", msg.RoutingKey)
+					continue
+				}
+				msg.RetryCount += 1
+				MessagesChan <- msg
 			}
 		}
 	}()
@@ -94,15 +108,15 @@ func waitForResponse(routingKey string) <-chan interface{} {
 	return responseChan
 }
 
-func waitForResponses(routingKey string, count int, timeout time.Duration) ([]interface{}, error) {
-	responses := make([]interface{}, 0, count)
+func waitForResponses[T any](routingKey string, count int, timeout time.Duration) ([]T, error) {
+	responses := make([]T, 0, count)
 	timeoutChan := time.After(timeout)
 
 	for i := 0; i < count; i++ {
 		select {
 		case <-timeoutChan:
 			return nil, fmt.Errorf("timeout waiting for device response")
-		case response := <-waitForResponse(routingKey):
+		case response := <-waitForResponse[T](routingKey):
 			responses = append(responses, response)
 		}
 	}

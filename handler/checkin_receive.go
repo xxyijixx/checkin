@@ -1,11 +1,11 @@
 // 处理设备主动发送的消息
-package server
+package handler
 
 import (
 	"checkin/config"
 	"checkin/query"
 	"checkin/query/model"
-	checkinMsg "checkin/server/msg"
+	checkinMsg "checkin/schema"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,7 +18,7 @@ import (
 )
 
 // receiveReg 处理设备注册
-func receiveReg(conn *websocket.Conn, msg []byte) {
+func ReceiveReg(conn *websocket.Conn, msg []byte) {
 	var regMsg checkinMsg.RegMessage
 	if err := json.Unmarshal(msg, &regMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
@@ -27,8 +27,8 @@ func receiveReg(conn *websocket.Conn, msg []byte) {
 		return
 	}
 	// 记录连接信息
-	clientsBySn[regMsg.Sn] = conn
-	clientsByConn[conn] = regMsg.Sn
+	ClientsBySn[regMsg.Sn] = conn
+	ClientsByConn[conn] = regMsg.Sn
 
 	checkinDevice, err := query.CheckinDevice.WithContext(context.Background()).
 		Where(query.CheckinDevice.Sn.Eq(regMsg.Sn)).
@@ -82,7 +82,7 @@ func sendSuccessResponse(conn *websocket.Conn, ret string) {
 }
 
 // receiveSendlog 处理上传考勤记录，不记录，仅推送数据，并返回成功响应
-func receiveSendlog(conn *websocket.Conn, msg []byte) {
+func ReceiveSendlog(conn *websocket.Conn, msg []byte) {
 	var sendlogMsg checkinMsg.SendlogMessage
 	if err := json.Unmarshal(msg, &sendlogMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
@@ -120,7 +120,7 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 }
 
 // receiveSenduser 处理用户上报，不记录，直接返回成功
-func receiveSenduser(conn *websocket.Conn, msg []byte) {
+func ReceiveSenduser(conn *websocket.Conn, msg []byte) {
 	var senduserMsg checkinMsg.SenduserMessage
 	if err := json.Unmarshal(msg, &senduserMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)

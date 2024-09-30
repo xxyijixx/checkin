@@ -4,12 +4,11 @@
 // 3. 下发用户信息
 // 4. 禁用\启用用户
 
-package server
+package handler
 
 import (
 	"checkin/query"
-	"checkin/server/common"
-	checkinMsg "checkin/server/msg"
+	"checkin/schema"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,28 +19,28 @@ import (
 )
 
 // handleGeuserlistRandomDevice 从已连接的设备中随机请求设备获取用户数据
-func handleGetuserlistRandomDevice() {
+func HandleGetuserlistRandomDevice() {
 
-	deviceSn := make([]string, len(clientsBySn))
-	for sn := range clientsBySn {
+	deviceSn := make([]string, len(ClientsBySn))
+	for sn := range ClientsBySn {
 		deviceSn = append(deviceSn, sn)
 	}
 	randomKey := rand.Intn(len(deviceSn))
-	conn := clientsBySn[deviceSn[randomKey]]
+	conn := ClientsBySn[deviceSn[randomKey]]
 
-	handleGetuserlist(conn, true)
+	HandleGetuserlist(conn, true)
 }
 
 // handleGetuserlist 处理获取用户数据
-func handleGetuserlist(conn *websocket.Conn, stn bool) {
-	sendData(conn, checkinMsg.GetuserlistMessage{
+func HandleGetuserlist(conn *websocket.Conn, stn bool) {
+	sendData(conn, schema.GetuserlistMessage{
 		Cmd: CmdGetuserlist,
 		Stn: stn,
 	})
 }
 
-func receiveGetuserlist(conn *websocket.Conn, msg []byte) {
-	var response checkinMsg.GetuserlistResponse
+func ReceiveGetuserlist(conn *websocket.Conn, msg []byte) {
+	var response schema.GetuserlistResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
@@ -55,59 +54,58 @@ func receiveGetuserlist(conn *websocket.Conn, msg []byte) {
 		return
 	}
 
-	handleGetuserlist(conn, false)
+	HandleGetuserlist(conn, false)
 
 }
 
-func handleGetuserinfo(conn *websocket.Conn, msg checkinMsg.GetuserinfoMessage) {
+func HandleGetuserinfo(conn *websocket.Conn, msg schema.GetuserinfoMessage) {
 	sendData(conn, msg)
 }
 
-func receiveGetuserinfo(conn *websocket.Conn, msg []byte) {
+func ReceiveGetuserinfo(conn *websocket.Conn, msg []byte) {
 
 }
 
 // HandleSetUserInfoAll 向所有设备下发用户信息,
-func handleSetUserInfoAll(msg checkinMsg.SetuserinfoMessage) *common.RetMessage[checkinMsg.RetSetuserinfo] {
+func HandleSetUserInfoAll(msg schema.SetuserinfoMessage) *schema.HttpRetMessage[schema.RetSetuserinfo] {
 
 	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
-		return common.Error[checkinMsg.RetSetuserinfo]("获取设备信息失败")
+		return schema.Error[schema.RetSetuserinfo]("获取设备信息失败")
 	}
 	routingKey := fmt.Sprintf("setuserinfo-%d-%d", msg.Enrollid, msg.Backupnum)
-	GlobalCache.Set(routingKey, len(devices), CacheDefaultExpiration)
 	for _, device := range devices {
-		conn, exists := clientsBySn[device.Sn]
+		conn, exists := ClientsBySn[device.Sn]
 		if !exists {
 			log.Warnf("下发用户失败，设备[%s]未连接", device.Sn)
 			continue
 		}
 		// clientsBySn
-		go handleSetuserinfo(conn, msg)
+		go HandleSetuserinfo(conn, msg)
 	}
 	// 等待处理
-	response, err := waitForResponses[checkinMsg.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
+	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
 	if err != nil {
-		return common.Error[checkinMsg.RetSetuserinfo]("上传失败")
+		return schema.Error[schema.RetSetuserinfo]("上传失败")
 	}
-	data := checkinMsg.RetSetuserinfo{
+	data := schema.RetSetuserinfo{
 		Result: true,
 	}
 	for _, res := range response {
 		if res.Ret != 1 {
 			data.Reason = res.Reason
 			data.Result = false
-			return common.ErrorWithData(res.Msg, data)
+			return schema.ErrorWithData(res.Msg, data)
 		}
 	}
 
-	return common.SuccessWithData(data)
+	return schema.SuccessWithData(data)
 }
 
 // handleSetuserinfo设置 仅对设备下发，不记录
-func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) {
-	_, exists := clientsByConn[conn]
+func HandleSetuserinfo(conn *websocket.Conn, msg schema.SetuserinfoMessage) {
+	_, exists := ClientsByConn[conn]
 	if !exists {
 		log.Warn("连接已断开")
 		return
@@ -115,19 +113,19 @@ func handleSetuserinfo(conn *websocket.Conn, msg checkinMsg.SetuserinfoMessage) 
 	sendData(conn, msg)
 }
 
-func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
+func ReceiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 
-	var response checkinMsg.WSResponse
+	var response schema.WSResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
 
-	ret := checkinMsg.RetDeviceSetuserinfo{}
+	ret := schema.RetDeviceSetuserinfo{}
 
 	// 处理设备响应
 	if !response.Result {
-		if sn := clientsByConn[conn]; sn != "" {
+		if sn := ClientsByConn[conn]; sn != "" {
 			log.Warnf("对设备[%s]下发用户信息失败: %v", sn, response.Msg)
 			ret.Msg = response.Msg
 			ret.Reason = response.Reason
@@ -155,56 +153,56 @@ func receiveSetuserinfo(conn *websocket.Conn, msg []byte) {
 }
 
 // HandleSetUserInfoAll 向所有设备下发
-func handleDeleteuserAll(msg checkinMsg.DeleteuserMessage) *common.RetMessage[checkinMsg.RetSetuserinfo] {
+func HandleDeleteuserAll(msg schema.DeleteuserMessage) *schema.HttpRetMessage[schema.RetSetuserinfo] {
 
 	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query devices: %v", err)
-		return common.Error[checkinMsg.RetSetuserinfo]("获取设备信息失败")
+		return schema.Error[schema.RetSetuserinfo]("获取设备信息失败")
 	}
 	routingKey := fmt.Sprintf("deleteuser-%d-%d", msg.Enrollid, msg.Backupnum)
 	for _, device := range devices {
-		conn, exists := clientsBySn[device.Sn]
+		conn, exists := ClientsBySn[device.Sn]
 		if !exists {
 			log.Warnf("删除用户失败，设备[%s]未连接", device.Sn)
 			continue
 		}
 		// clientsBySn
-		handleDeleteuser(conn, msg)
+		HandleDeleteuser(conn, msg)
 	}
 	// 等待处理
-	response, err := waitForResponses[checkinMsg.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
+	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
 	if err != nil {
-		return common.Error[checkinMsg.RetSetuserinfo]("处理失败")
+		return schema.Error[schema.RetSetuserinfo]("处理失败")
 	}
-	data := checkinMsg.RetSetuserinfo{
+	data := schema.RetSetuserinfo{
 		Result: true,
 	}
 	for _, res := range response {
 		if res.Ret != 1 {
 			data.Reason = res.Reason
 			data.Result = false
-			return common.ErrorWithData(res.Msg, data)
+			return schema.ErrorWithData(res.Msg, data)
 		}
 	}
 
-	return common.SuccessWithData(data)
+	return schema.SuccessWithData(data)
 }
 
 // handleDeleteuser 处理删除用户信息
-func handleDeleteuser(conn *websocket.Conn, msg checkinMsg.DeleteuserMessage) {
+func HandleDeleteuser(conn *websocket.Conn, msg schema.DeleteuserMessage) {
 	sendData(conn, msg)
 }
 
 // receiveDeleteser 接收设备删除用户命令的响应
-func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
-	var response checkinMsg.DeleteuserResponse
+func ReceiveDeleteuser(conn *websocket.Conn, msg []byte) {
+	var response schema.DeleteuserResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
-	ret := checkinMsg.RetDeviceSetuserinfo{}
-	sn := clientsByConn[conn]
+	ret := schema.RetDeviceSetuserinfo{}
+	sn := ClientsByConn[conn]
 	if !response.Result {
 		log.Errorf("设备[%s]删除用户信息失败, 原因:%d", sn, response.Reason)
 		ret.Msg = "error"
@@ -228,36 +226,36 @@ func receiveDeleteuser(conn *websocket.Conn, msg []byte) {
 }
 
 // handleEnableuserAll 对所有设备更新用户状态
-func handleEnableuserAll(msg checkinMsg.EnableuserMessage) {
+func HandleEnableuserAll(msg schema.EnableuserMessage) {
 	devices, err := query.CheckinDevice.WithContext(context.Background()).Find()
 	if err != nil {
 		log.Errorf("Error query machines: %v", err)
 		return
 	}
 	for _, device := range devices {
-		conn, exists := clientsBySn[device.Sn]
+		conn, exists := ClientsBySn[device.Sn]
 		if !exists {
 			log.Warnf("设置用户状态失败，设备[%s]未连接", device.Sn)
 			continue
 		}
 		// clientsBySn
-		handleEnableuser(conn, msg)
+		HandleEnableuser(conn, msg)
 	}
 }
 
 // handleEnableuser 处理用户禁用\启用命令
-func handleEnableuser(conn *websocket.Conn, msg checkinMsg.EnableuserMessage) {
+func HandleEnableuser(conn *websocket.Conn, msg schema.EnableuserMessage) {
 	sendData(conn, msg)
 }
 
 // receiveEnableuser 接收设备处理用户禁用\启用命令的响应
-func receiveEnableuser(conn *websocket.Conn, msg []byte) {
-	var response checkinMsg.EnableuserResponse
+func ReceiveEnableuser(conn *websocket.Conn, msg []byte) {
+	var response schema.EnableuserResponse
 	if err := json.Unmarshal(msg, &response); err != nil {
 		log.Printf("JSON unmarshal error: %v", err)
 		return
 	}
-	sn := clientsByConn[conn]
+	sn := ClientsByConn[conn]
 	if !response.Result {
 		log.Errorf("设备[%s]设置用户状态失败, 原因:%d", sn, response.Reason)
 	} else {

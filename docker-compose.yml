@@ -37,6 +37,8 @@ services:
       MYSQL_USERNAME: dootask 
       MYSQL_PASSWORD: 123456 
       MYSQL_DB_NAME: dootask
+      REPORT_API: "http://10.55.158.3:80/api/public/checkin/report"
+      REPORT_KEY: "2fc24d61be12502d4414503efb48308f"
     volumes:
       - ./tmp/db:/app/db
     networks:

@@ -1,7 +1,9 @@
-package server
+// 处理与用户相关的http请求
+
+package handler
 
 import (
-	"checkin/server/msg"
+	checkinMsg "checkin/schema"
 	"encoding/json"
 	"net/http"
 
@@ -33,7 +35,7 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		setUserHandle(w, r)
 	case http.MethodDelete:
-		deleteUserHandle(w, r)
+		DeleteUserHandle(w, r)
 	default:
 		// 如果请求方法不支持，返回405 Method Not Allowed
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -52,7 +54,7 @@ func UserStatusHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	handleEnableuserAll(msg.EnableuserMessage{
+	HandleEnableuserAll(checkinMsg.EnableuserMessage{
 		Cmd:      CmdEnableuser,
 		Enrollid: params.Enrollid,
 		Enflag:   params.Enflag,
@@ -60,7 +62,8 @@ func UserStatusHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func listUserHandle(w http.ResponseWriter, r *http.Request) {
-	handleGetuserlistRandomDevice()
+	_, _ = w, r
+	HandleGetuserlistRandomDevice()
 }
 
 func setUserHandle(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +77,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	ret := handleSetUserInfoAll(msg.SetuserinfoMessage{
+	ret := HandleSetUserInfoAll(checkinMsg.SetuserinfoMessage{
 		Cmd:       CmdSetuserinfo,
 		Name:      userInfo.Name,
 		Enrollid:  userInfo.Enrollid,
@@ -85,7 +88,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 	sendJsonData(w, ret)
 }
 
-func deleteUserHandle(w http.ResponseWriter, r *http.Request) {
+func DeleteUserHandle(w http.ResponseWriter, r *http.Request) {
 	var params DeleteUserParams
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
@@ -98,7 +101,7 @@ func deleteUserHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// handleDeleteuser()
-	ret := handleDeleteuserAll(msg.DeleteuserMessage{
+	ret := HandleDeleteuserAll(checkinMsg.DeleteuserMessage{
 		Cmd:       CmdDeleteuser,
 		Enrollid:  params.Enrollid,
 		Backupnum: params.Backupnum,

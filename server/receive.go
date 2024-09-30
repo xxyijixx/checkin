@@ -1,3 +1,4 @@
+// 处理设备主动发送的消息
 package server
 
 import (
@@ -16,105 +17,98 @@ import (
 	"gorm.io/gorm"
 )
 
-// 处理 "reg" 命令
+// receiveReg 处理设备注册
 func receiveReg(conn *websocket.Conn, msg []byte) {
-	// log.Printf("Received registration from device: %s", msg.Sn)
 	var regMsg checkinMsg.RegMessage
 	if err := json.Unmarshal(msg, &regMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
-		// 返回成功响应
-		sendData(conn, checkinMsg.WSResponse{
-			Ret:    "reg",
-			Result: false,
-			Reason: 1,
-		})
+		// 返回失败响应
+		sendErrorResponse(conn, "reg", 1)
 		return
 	}
 	// 记录连接信息
 	clientsBySn[regMsg.Sn] = conn
 	clientsByConn[conn] = regMsg.Sn
 
-	checkinMachine, err := query.CheckinDevice.WithContext(context.Background()).
+	checkinDevice, err := query.CheckinDevice.WithContext(context.Background()).
 		Where(query.CheckinDevice.Sn.Eq(regMsg.Sn)).
 		First()
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
+			sendErrorResponse(conn, "reg", 1)
 			return
 		}
-		jsonData, err := json.Marshal(regMsg.Devinfo)
-		if err != nil {
-			return
-		}
+	}
+	jsonData, err := json.Marshal(regMsg.Devinfo)
+	if err != nil {
+		// 发送失败响应
+		sendErrorResponse(conn, "reg", 1)
+		return
+	}
+	// 设备没被记录
+	if checkinDevice == nil {
 		query.CheckinDevice.WithContext(context.Background()).
 			Create(&model.CheckinDevice{
 				Sn:      regMsg.Sn,
 				Devinfo: string(jsonData),
 			})
-		sendData(conn, checkinMsg.WSResponse{
-			Ret:       "reg",
-			Result:    true,
-			Cloudtime: time.Now().Format(time.DateTime),
-		})
+		sendSuccessResponse(conn, "reg")
 		return
 	}
-	jsonData, err := json.Marshal(regMsg.Devinfo)
-	if err != nil {
-		return
-	}
-	query.CheckinDevice.WithContext(context.Background()).Where(query.CheckinDevice.Sn.Eq(checkinMachine.Sn)).Update(query.CheckinDevice.Devinfo, jsonData)
+
+	// 更新设备信息
+	query.CheckinDevice.WithContext(context.Background()).
+		Where(query.CheckinDevice.Sn.Eq(checkinDevice.Sn)).
+		Update(query.CheckinDevice.Devinfo, jsonData)
+	sendSuccessResponse(conn, "reg")
+}
+
+// 发送注册错误响应
+func sendErrorResponse(conn *websocket.Conn, ret string, reason int) {
 	sendData(conn, checkinMsg.WSResponse{
-		Ret:       "reg",
+		Ret:    ret,
+		Result: false,
+		Reason: reason,
+	})
+}
+
+// 发送成功响应
+func sendSuccessResponse(conn *websocket.Conn, ret string) {
+	sendData(conn, checkinMsg.WSResponse{
+		Ret:       ret,
 		Result:    true,
 		Cloudtime: time.Now().Format(time.DateTime),
 	})
 }
 
+// receiveSendlog 处理上传考勤记录，不记录，仅推送数据，并返回成功响应
 func receiveSendlog(conn *websocket.Conn, msg []byte) {
 	var sendlogMsg checkinMsg.SendlogMessage
 	if err := json.Unmarshal(msg, &sendlogMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
-		// 返回成功响应
-		sendData(conn, checkinMsg.WSResponse{
-			Ret:    "sendlog",
-			Result: false,
-			Reason: 1,
-		})
+		// 返回失败响应
+		sendErrorResponse(conn, "sendlog", 1)
 		return
 	}
-	ctx := context.Background()
 
-	logRecord := make([]*model.CheckinDeviceRecord, sendlogMsg.Count)
-	for i, record := range sendlogMsg.Record {
+	for _, record := range sendlogMsg.Record {
 		reportTime, err := time.Parse(time.DateTime, record.Time)
 		if err != nil {
 			reportTime = time.Now()
 		}
-		logRecord[i] = &model.CheckinDeviceRecord{
-			Sn:         sendlogMsg.Sn,
-			Mode:       record.Mode,
-			Event:      record.Event,
-			Inout:      record.Inout,
-			ReportTime: reportTime,
-			Enrollid:   record.Enrollid,
-		}
-
+		// 用户被禁用
 		if record.Event == 15 {
 			log.Debugf("该用户被禁用,userid=%d", record.Enrollid)
 			continue
 		}
 		// 推送考勤信息
 		mac := fmt.Sprintf("checkin-%d", record.Enrollid)
-		url := fmt.Sprintf("%s?key=%s&mac=%s&time=%d", config.EnvConfig.REPORT_API, config.EnvConfig.REPORT_KEY, mac, time.Now().Unix())
+		url := fmt.Sprintf("%s?key=%s&mac=%s&time=%d", config.EnvConfig.REPORT_API, config.EnvConfig.REPORT_KEY, mac, reportTime.Unix())
 		_, err = http.Post(url, "", nil)
 		if err != nil {
 			log.Println("推送考勤信息失败,", err)
 		}
 	}
-	err := query.CheckinDeviceRecord.WithContext(ctx).Create(logRecord...)
-	if err != nil {
-		log.Errorf("记录考勤数据失败: %v", err)
-	}
-
 	sendData(conn, checkinMsg.WSResponse{
 		Ret:       "sendlog",
 		Result:    true,
@@ -125,68 +119,13 @@ func receiveSendlog(conn *websocket.Conn, msg []byte) {
 	})
 }
 
+// receiveSenduser 处理用户上报，不记录，直接返回成功
 func receiveSenduser(conn *websocket.Conn, msg []byte) {
 	var senduserMsg checkinMsg.SenduserMessage
 	if err := json.Unmarshal(msg, &senduserMsg); err != nil {
 		log.Println("RegMessage unmarshal error:", err)
-		// 返回成功响应
-		sendData(conn, checkinMsg.WSResponse{
-			Ret:    "senduser",
-			Result: false,
-			Reason: 1,
-		})
+		sendErrorResponse(conn, "senduser", 1)
 		return
 	}
-	recordStr := ""
-	switch v := senduserMsg.Record.(type) {
-	case float64:
-		recordStr = fmt.Sprintf("%.f", v) // 将数字转换为字符串
-	case string:
-		recordStr = v // 直接使用字符串
-	default:
-		recordStr = "" // 或者处理其他情况
-	}
-	fmt.Println("接收Message:", senduserMsg)
-	ctx := context.Background()
-	userInfo, err := query.CheckinDeviceUser.WithContext(ctx).
-		Where(query.CheckinDeviceUser.Enrollid.Eq(senduserMsg.Enrollid),
-			query.CheckinDeviceUser.Backupnum.Eq(senduserMsg.Backupnum),
-			query.CheckinDeviceUser.Sn.Eq(senduserMsg.Sn),
-		).First()
-	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			sendData(conn, checkinMsg.WSResponse{
-				Ret:    "senduser",
-				Result: false,
-				Reason: 1,
-			})
-			return
-		}
-	}
-	// 用户信息未记录
-	if userInfo == nil {
-		log.Debugf("用户信息未登记: %+v", senduserMsg)
-		err = query.CheckinDeviceUser.WithContext(ctx).Create(&model.CheckinDeviceUser{
-			Sn:        senduserMsg.Sn,
-			Enrollid:  senduserMsg.Enrollid,
-			Name:      senduserMsg.Name,
-			Backupnum: senduserMsg.Backupnum,
-			Record:    recordStr,
-		})
-		if err != nil {
-			log.Debugf("Error create user: %v", err)
-			sendData(conn, checkinMsg.WSResponse{
-				Ret:    "senduser",
-				Result: false,
-				Reason: 1,
-			})
-			return
-		}
-	}
-
-	sendData(conn, checkinMsg.WSResponse{
-		Ret:       "senduser",
-		Result:    true,
-		Cloudtime: time.Now().Format(time.DateTime),
-	})
+	sendSuccessResponse(conn, "senduser")
 }

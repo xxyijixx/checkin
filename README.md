@@ -19,7 +19,8 @@
 修改`config/env.go`中的变量，或者可以在环境变量中配置
 
 ```bash
-go run main.go up
+go run main.go migrate # 执行数据库迁移
+go run main.go up # 启动服务
 ```
 
 docker

@@ -3,14 +3,14 @@
 package handler
 
 import (
-	checkinMsg "checkin/schema"
+	"checkin/schema"
 	"encoding/json"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type SetUserInfo struct {
+type SetUserInfoParams struct {
 	Enrollid  int         `json:"enrollid,omitempty"`
 	Name      string      `json:"name,omitempty"`
 	Backupnum int         `json:"backupnum,omitempty"`
@@ -54,7 +54,7 @@ func UserStatusHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	HandleEnableuserAll(checkinMsg.EnableuserMessage{
+	HandleEnableuserAll(schema.EnableuserMessage{
 		Cmd:      CmdEnableuser,
 		Enrollid: params.Enrollid,
 		Enflag:   params.Enflag,
@@ -67,7 +67,7 @@ func listUserHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func setUserHandle(w http.ResponseWriter, r *http.Request) {
-	var userInfo SetUserInfo
+	var userInfo SetUserInfoParams
 	err := json.NewDecoder(r.Body).Decode(&userInfo)
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -77,7 +77,7 @@ func setUserHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	ret := HandleSetUserInfoAll(checkinMsg.SetuserinfoMessage{
+	ret := HandleSetUserInfoAll(schema.SetuserinfoMessage{
 		Cmd:       CmdSetuserinfo,
 		Name:      userInfo.Name,
 		Enrollid:  userInfo.Enrollid,
@@ -101,7 +101,7 @@ func DeleteUserHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// handleDeleteuser()
-	ret := HandleDeleteuserAll(checkinMsg.DeleteuserMessage{
+	ret := HandleDeleteuserAll(schema.DeleteuserMessage{
 		Cmd:       CmdDeleteuser,
 		Enrollid:  params.Enrollid,
 		Backupnum: params.Backupnum,

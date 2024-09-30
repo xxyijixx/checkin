@@ -1,9 +1,8 @@
 package handler
 
 import (
-	checkinMsg "checkin/schema"
+	"checkin/schema"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -39,8 +38,8 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 打印收到的消息
-		fmt.Printf("Received message: %s\n", message)
-		var baseMsg checkinMsg.BaseMessage
+		log.Infof("Received message: %s\n", message)
+		var baseMsg schema.BaseMessage
 		if err := json.Unmarshal(message, &baseMsg); err != nil {
 			log.Println("Base JSON unmarshal error:", err)
 			continue
@@ -51,14 +50,13 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 				handler(conn, message)
 			} else {
 				log.Printf("Unknown command: %s", baseMsg.Cmd)
-				sendData(conn, checkinMsg.WSResponse{
-					Ret:    "failure",
+				sendData(conn, schema.WSResponse{
+					Ret:    baseMsg.Cmd,
 					Result: false,
-					Reason: 1002, // 未知命令错误代码
+					Reason: 1002,
 				})
 			}
 		} else if baseMsg.Ret != "" {
-			log.Println("处理考勤机回复")
 			if receiver, ok := WsReceives[baseMsg.Ret]; ok {
 				receiver(conn, message)
 			} else {

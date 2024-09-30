@@ -181,6 +181,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 func Run() {
 	http.HandleFunc("/user/enable", UserStatusHandle)
+	http.HandleFunc("/user/delete", deleteUserHandle)
 	http.HandleFunc("/user", UserHandle)
 	// 设置路由，定义 WebSocket 处理路径
 	http.HandleFunc("/", wsHandler)

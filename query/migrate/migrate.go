@@ -20,7 +20,7 @@ func Migrate() {
 	if err != nil {
 		panic(fmt.Errorf("db connection failed: %v", err))
 	}
-	err = db.AutoMigrate(&model.CheckinDevice{}, &model.CheckinDeviceUser{}, &model.CheckinDeviceRecord{})
+	err = db.AutoMigrate(&model.CheckinDevice{})
 	if err != nil {
 		panic(fmt.Errorf("db migrate failed: %v", err))
 	}

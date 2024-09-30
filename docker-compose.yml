@@ -31,11 +31,14 @@ services:
     environment:
       TZ: Asia/Shanghai
       STORAGE: sqlite
+      SQLITE_PATH: "./db/checkin.db"
       MYSQL_HOST: 10.55.158.5 
       MYSQL_PORT: 3306
       MYSQL_USERNAME: dootask 
       MYSQL_PASSWORD: 123456 
       MYSQL_DB_NAME: dootask
+    volumes:
+      - ./tmp/db:/app/db
     networks:
       extnetwork:
         ipv4_address: "10.55.158.55"

@@ -16,44 +16,34 @@ import (
 )
 
 var (
-	Q                   = new(Query)
-	CheckinDevice       *checkinDevice
-	CheckinDeviceRecord *checkinDeviceRecord
-	CheckinDeviceUser   *checkinDeviceUser
+	Q             = new(Query)
+	CheckinDevice *checkinDevice
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	CheckinDevice = &Q.CheckinDevice
-	CheckinDeviceRecord = &Q.CheckinDeviceRecord
-	CheckinDeviceUser = &Q.CheckinDeviceUser
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                  db,
-		CheckinDevice:       newCheckinDevice(db, opts...),
-		CheckinDeviceRecord: newCheckinDeviceRecord(db, opts...),
-		CheckinDeviceUser:   newCheckinDeviceUser(db, opts...),
+		db:            db,
+		CheckinDevice: newCheckinDevice(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	CheckinDevice       checkinDevice
-	CheckinDeviceRecord checkinDeviceRecord
-	CheckinDeviceUser   checkinDeviceUser
+	CheckinDevice checkinDevice
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                  db,
-		CheckinDevice:       q.CheckinDevice.clone(db),
-		CheckinDeviceRecord: q.CheckinDeviceRecord.clone(db),
-		CheckinDeviceUser:   q.CheckinDeviceUser.clone(db),
+		db:            db,
+		CheckinDevice: q.CheckinDevice.clone(db),
 	}
 }
 
@@ -67,24 +57,18 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                  db,
-		CheckinDevice:       q.CheckinDevice.replaceDB(db),
-		CheckinDeviceRecord: q.CheckinDeviceRecord.replaceDB(db),
-		CheckinDeviceUser:   q.CheckinDeviceUser.replaceDB(db),
+		db:            db,
+		CheckinDevice: q.CheckinDevice.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	CheckinDevice       ICheckinDeviceDo
-	CheckinDeviceRecord ICheckinDeviceRecordDo
-	CheckinDeviceUser   ICheckinDeviceUserDo
+	CheckinDevice ICheckinDeviceDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		CheckinDevice:       q.CheckinDevice.WithContext(ctx),
-		CheckinDeviceRecord: q.CheckinDeviceRecord.WithContext(ctx),
-		CheckinDeviceUser:   q.CheckinDeviceUser.WithContext(ctx),
+		CheckinDevice: q.CheckinDevice.WithContext(ctx),
 	}
 }
 

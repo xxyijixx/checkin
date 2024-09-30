@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -66,18 +65,18 @@ func (l *LogrusLogger) Trace(ctx context.Context, begin time.Time, fc func() (st
 func init() {
 	var err error
 	// 初始化 logrus
-	log := logrus.New()
-	log.SetFormatter(&logrus.JSONFormatter{})
-	log.SetLevel(logrus.InfoLevel)
-	logrusLogger := &LogrusLogger{
-		logger: log,
-	}
-	dsn := config.EnvConfig.GetDSN()
+	// log := logrus.New()
+	// log.SetFormatter(&logrus.JSONFormatter{})
+	// log.SetLevel(logrus.InfoLevel)
+	// logrusLogger := &LogrusLogger{
+	// 	logger: log,
+	// }
+	dialector := config.EnvConfig.GetGormDialector()
 	DB, err = gorm.Open(
-		mysql.Open(dsn),
+		dialector,
 		&gorm.Config{
 			PrepareStmt: true,
-			Logger:      logrusLogger,
+			// Logger:      logrusLogger,
 		},
 	)
 	SetDefault(DB)

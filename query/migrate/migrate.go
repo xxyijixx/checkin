@@ -1,24 +1,22 @@
-package main
+package migrate
 
 import (
 	"checkin/config"
 	"checkin/query/model"
 	"fmt"
 
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-func main() {
+func Migrate() {
 	var err error
-	dsn := config.EnvConfig.GetDSN()
+	dialector := config.EnvConfig.GetGormDialector()
 	db, err := gorm.Open(
-		mysql.New(
-			mysql.Config{
-				DSN: dsn,
-			}), &gorm.Config{
+		dialector,
+		&gorm.Config{
 			DisableForeignKeyConstraintWhenMigrating: true,
-		})
+		},
+	)
 	if err != nil {
 		panic(fmt.Errorf("db connection failed: %v", err))
 	}

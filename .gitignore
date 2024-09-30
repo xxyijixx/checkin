@@ -1,2 +1,3 @@
 tmp/
 docker/mysql/data
+checkin.db

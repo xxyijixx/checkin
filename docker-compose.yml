@@ -30,6 +30,7 @@ services:
       - "7788:7788"
     environment:
       TZ: Asia/Shanghai
+      STORAGE: sqlite
       MYSQL_HOST: 10.55.158.5 
       MYSQL_PORT: 3306
       MYSQL_USERNAME: dootask 

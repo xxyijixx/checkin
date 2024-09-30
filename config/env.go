@@ -11,12 +11,24 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var EnvConfig = envConfigSchema{}
 
 func (s *envConfigSchema) GetDSN() string {
 	return dsn
+}
+
+func (s *envConfigSchema) GetGormDialector() gorm.Dialector {
+	switch s.STORAGE {
+	case "mysql":
+		return mysql.Open(s.GetDSN())
+	default:
+		return sqlite.Open(s.SQLITE_PATH)
+	}
 }
 
 var dsn string
@@ -29,6 +41,10 @@ func init() {
 var defaultConfig = envConfigSchema{
 	ENV: "dev",
 
+	STORAGE: "sqlite",
+
+	SQLITE_PATH: "./checkin.db",
+
 	MYSQL_HOST:     "127.0.0.1",
 	MYSQL_PORT:     "50000",
 	MYSQL_USERNAME: "dootask",
@@ -37,7 +53,8 @@ var defaultConfig = envConfigSchema{
 
 	DB_PREFIX: "pre_",
 
-	REPORT_API: "http://127.0.0.1:2223/api/public/checkin/report",
+	REPORT_API: "http://10.55.158.3:80/api/public/checkin/report",
+	// REPORT_API: "http://127.0.0.1:2223/api/public/checkin/report",
 	REPORT_KEY: "2fc24d61be12502d4414503efb48308f",
 
 	MAX_REQUEST_BODY_SIZE: 200 * 1024 * 1024,
@@ -45,6 +62,10 @@ var defaultConfig = envConfigSchema{
 
 type envConfigSchema struct {
 	ENV string `env:"ENV,DREAM_ENV"`
+
+	STORAGE string
+
+	SQLITE_PATH string
 
 	MYSQL_HOST     string
 	MYSQL_PORT     string

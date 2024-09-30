@@ -42,5 +42,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.AddCommand(upCmd)
+	// rootCmd.AddCommand(upCmd)
+	// rootCmd.AddCommand(migrateCmd)
+	// rootCmd.AddCommand(generateCmd)
 }

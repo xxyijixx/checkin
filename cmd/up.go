@@ -13,9 +13,13 @@ import (
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Run server",
+	Run: func(cmd *cobra.Command, args []string) {
+		server.Run()
+	},
 }
 
 func init() {
-	server.Run()
+	//
+	rootCmd.AddCommand(upCmd)
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -33,7 +33,12 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 		// 读取客户端发送的消息
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("WebSocket connection closed unexpectedly: %v", err)
+			} else {
+				log.Println("WebSocket connection closed normally:", err)
+			}
+			deleteDeviceConn(conn)
 			break
 		}
 

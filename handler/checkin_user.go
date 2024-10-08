@@ -75,6 +75,7 @@ func HandleSetUserInfoAll(msg schema.SetuserinfoMessage) *schema.HttpRetMessage[
 		return schema.Error[schema.RetSetuserinfo]("获取设备信息失败")
 	}
 	routingKey := fmt.Sprintf("setuserinfo-%d-%d", msg.Enrollid, msg.Backupnum)
+	activeDeviceNum := 0
 	for _, device := range devices {
 		conn, exists := ClientsBySn[device.Sn]
 		if !exists {
@@ -82,11 +83,26 @@ func HandleSetUserInfoAll(msg schema.SetuserinfoMessage) *schema.HttpRetMessage[
 			continue
 		}
 		// clientsBySn
+		activeDeviceNum++
 		go HandleSetuserinfo(conn, msg)
 	}
+	log.Debugf("当前活跃设备数量:%v", activeDeviceNum)
+	// 当前没有活跃设备
+	if activeDeviceNum == 0 {
+		log.Warn("当前没有活跃设备")
+		return schema.Error[schema.RetSetuserinfo]("获取设备信息失败")
+	}
 	// 等待处理
-	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
+	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, activeDeviceNum, DefaultTimeout)
 	if err != nil {
+		// 部分设备成功
+		if len(response) != 0 {
+			device_sns := make([]string, len(response))
+			for i, res := range response {
+				device_sns[i] = res.Sn
+			}
+			log.Warnf("部分设备[%v]下发用户信息成功", device_sns)
+		}
 		return schema.Error[schema.RetSetuserinfo]("上传失败")
 	}
 	data := schema.RetSetuserinfo{
@@ -171,7 +187,7 @@ func HandleDeleteuserAll(msg schema.DeleteuserMessage) *schema.HttpRetMessage[sc
 		HandleDeleteuser(conn, msg)
 	}
 	// 等待处理
-	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, len(devices), CacheDefaultExpiration)
+	response, err := waitForResponses[schema.RetDeviceSetuserinfo](routingKey, len(devices), DefaultTimeout)
 	if err != nil {
 		return schema.Error[schema.RetSetuserinfo]("处理失败")
 	}

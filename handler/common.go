@@ -53,6 +53,7 @@ var (
 	GlobalCache            = cache.New(5*time.Minute, 10*time.Minute)
 	CacheLock              = sync.Mutex{}
 	CacheDefaultExpiration = 3 * time.Minute
+	DefaultTimeout         = 10 * time.Second
 )
 
 func sendData(conn *websocket.Conn, data interface{}) {
@@ -60,10 +61,16 @@ func sendData(conn *websocket.Conn, data interface{}) {
 	if err := conn.WriteJSON(data); err != nil {
 		log.Println("Write error:", err)
 		conn.Close()
-		sn := ClientsByConn[conn]
-		delete(ClientsBySn, sn)
-		delete(ClientsByConn, conn)
+		deleteDeviceConn(conn)
 	}
+}
+
+// deleteDeviceConn 删除设备websocket连接信息
+func deleteDeviceConn(conn *websocket.Conn) {
+	sn := ClientsByConn[conn]
+	log.Warnf("删除设备[%v]连接信息", sn)
+	delete(ClientsBySn, sn)
+	delete(ClientsByConn, conn)
 }
 
 type RetMessage struct {
@@ -104,13 +111,13 @@ func waitForResponse[T any](routingKey string) <-chan T {
 }
 
 func waitForResponses[T any](routingKey string, count int, timeout time.Duration) ([]T, error) {
-	responses := make([]T, 0, count)
+	responses := make([]T, 0)
 	timeoutChan := time.After(timeout)
 
 	for i := 0; i < count; i++ {
 		select {
 		case <-timeoutChan:
-			return nil, fmt.Errorf("timeout waiting for device response")
+			return responses, fmt.Errorf("timeout waiting for device response")
 		case response := <-waitForResponse[T](routingKey):
 			responses = append(responses, response)
 		}

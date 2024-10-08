@@ -16,6 +16,9 @@ func Run() {
 	// 启动 HTTP 服务器并监听端口
 	log.Println("Server started at :7788")
 
+	// 设备初始化
+	handler.DeviceInit()
+
 	if err := http.ListenAndServe(":7788", nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}

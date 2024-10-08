@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -26,10 +27,7 @@ func ReceiveReg(conn *websocket.Conn, msg []byte) {
 		sendErrorResponse(conn, "reg", 1)
 		return
 	}
-	// 记录连接信息
-	ClientsBySn[regMsg.Sn] = conn
-	ClientsByConn[conn] = regMsg.Sn
-
+	// 判断是否允许自由注册
 	checkinDevice, err := query.CheckinDevice.WithContext(context.Background()).
 		Where(query.CheckinDevice.Sn.Eq(regMsg.Sn)).
 		First()
@@ -39,6 +37,18 @@ func ReceiveReg(conn *websocket.Conn, msg []byte) {
 			return
 		}
 	}
+
+	if config.EnvConfig.FREE_REGISTRATION == 0 && checkinDevice == nil {
+		log.Warnf("该设备[%v]不允许被注册", regMsg.Sn)
+		sendErrorResponse(conn, "reg", 1)
+		conn.Close()
+		return
+	}
+
+	// 记录连接信息
+	ClientsBySn[regMsg.Sn] = conn
+	ClientsByConn[conn] = regMsg.Sn
+
 	jsonData, err := json.Marshal(regMsg.Devinfo)
 	if err != nil {
 		// 发送失败响应
@@ -128,4 +138,31 @@ func ReceiveSenduser(conn *websocket.Conn, msg []byte) {
 		return
 	}
 	sendSuccessResponse(conn, "senduser")
+}
+
+func DeviceInit() {
+	ctx := context.Background()
+	if config.EnvConfig.FREE_REGISTRATION == 0 {
+		log.Infof("初始化")
+		deviceSnList := strings.Split(config.EnvConfig.INIT_SN, ",")
+		for _, sn := range deviceSnList {
+			device, err := query.CheckinDevice.WithContext(ctx).Where(query.CheckinDevice.Sn.Eq(sn)).First()
+			if err != nil {
+				if err != gorm.ErrRecordNotFound {
+					continue
+				}
+			}
+			if device == nil {
+				log.Debugf("Init device [#%s] infomation", sn)
+				err = query.CheckinDevice.WithContext(ctx).Save(&model.CheckinDevice{
+					Sn: sn,
+				})
+				if err != nil {
+					log.Warnf("Error create device: %v", err)
+				}
+			}
+
+		}
+	}
+
 }

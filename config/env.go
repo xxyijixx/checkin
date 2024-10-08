@@ -41,6 +41,10 @@ func init() {
 var defaultConfig = envConfigSchema{
 	ENV: "dev",
 
+	FREE_REGISTRATION: 1,
+
+	INIT_SN: "",
+
 	STORAGE: "sqlite",
 
 	SQLITE_PATH: "./checkin.db",
@@ -62,6 +66,12 @@ var defaultConfig = envConfigSchema{
 
 type envConfigSchema struct {
 	ENV string `env:"ENV,DREAM_ENV"`
+
+	// 是否允许自由注册
+	FREE_REGISTRATION int
+
+	// 初始化设备sn，多个使用逗号分隔，只有不允许自由注册的时候生效，
+	INIT_SN string
 
 	STORAGE string
 

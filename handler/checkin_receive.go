@@ -143,25 +143,18 @@ func ReceiveSenduser(conn *websocket.Conn, msg []byte) {
 func DeviceInit() {
 	ctx := context.Background()
 	if config.EnvConfig.FREE_REGISTRATION == 0 {
-		log.Infof("初始化")
+		log.Warnf("删库跑路中....")
+		query.DB.Where("1=1").Delete(&model.CheckinDevice{})
+
 		deviceSnList := strings.Split(config.EnvConfig.INIT_SN, ",")
 		for _, sn := range deviceSnList {
-			device, err := query.CheckinDevice.WithContext(ctx).Where(query.CheckinDevice.Sn.Eq(sn)).First()
+			log.Debugf("Init device [#%s] infomation", sn)
+			err := query.CheckinDevice.WithContext(ctx).Save(&model.CheckinDevice{
+				Sn: sn,
+			})
 			if err != nil {
-				if err != gorm.ErrRecordNotFound {
-					continue
-				}
+				log.Warnf("Error create device: %v", err)
 			}
-			if device == nil {
-				log.Debugf("Init device [#%s] infomation", sn)
-				err = query.CheckinDevice.WithContext(ctx).Save(&model.CheckinDevice{
-					Sn: sn,
-				})
-				if err != nil {
-					log.Warnf("Error create device: %v", err)
-				}
-			}
-
 		}
 	}
 

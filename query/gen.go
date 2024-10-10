@@ -18,17 +18,20 @@ import (
 var (
 	Q             = new(Query)
 	CheckinDevice *checkinDevice
+	Setting       *setting
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	CheckinDevice = &Q.CheckinDevice
+	Setting = &Q.Setting
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:            db,
 		CheckinDevice: newCheckinDevice(db, opts...),
+		Setting:       newSetting(db, opts...),
 	}
 }
 
@@ -36,6 +39,7 @@ type Query struct {
 	db *gorm.DB
 
 	CheckinDevice checkinDevice
+	Setting       setting
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -44,6 +48,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:            db,
 		CheckinDevice: q.CheckinDevice.clone(db),
+		Setting:       q.Setting.clone(db),
 	}
 }
 
@@ -59,16 +64,19 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:            db,
 		CheckinDevice: q.CheckinDevice.replaceDB(db),
+		Setting:       q.Setting.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
 	CheckinDevice ICheckinDeviceDo
+	Setting       ISettingDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		CheckinDevice: q.CheckinDevice.WithContext(ctx),
+		Setting:       q.Setting.WithContext(ctx),
 	}
 }
 

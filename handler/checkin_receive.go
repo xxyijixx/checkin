@@ -100,6 +100,37 @@ func ReceiveSendlog(conn *websocket.Conn, msg []byte) {
 		sendErrorResponse(conn, "sendlog", 1)
 		return
 	}
+	settingsRow, err := query.Setting.WithContext(context.Background()).Where(query.Setting.Name.Eq("checkinSetting")).First()
+	if err != nil {
+		log.Warnf("查询设置失败: %v", err)
+		// 返回错误
+		sendData(conn, checkinMsg.WSResponse{
+			Ret:       "sendlog",
+			Result:    false,
+			Count:     sendlogMsg.Count,
+			Logindex:  0,
+			Cloudtime: time.Now().Format(time.DateTime),
+			Access:    1,
+		})
+		return
+	}
+	var settings map[string]interface{}
+	if err := json.Unmarshal([]byte(settingsRow.Setting), &settings); err != nil {
+		sendData(conn, checkinMsg.WSResponse{
+			Ret:       "sendlog",
+			Result:    false,
+			Count:     sendlogMsg.Count,
+			Logindex:  0,
+			Cloudtime: time.Now().Format(time.DateTime),
+			Access:    1,
+		})
+		return
+	}
+	key, ok := settings["key"].(string)
+	if !ok || key == "" {
+		log.Warnf("查询不到对应的Key或Key为空")
+		return
+	}
 
 	for _, record := range sendlogMsg.Record {
 		reportTime, err := time.Parse(time.DateTime, record.Time)
@@ -113,7 +144,7 @@ func ReceiveSendlog(conn *websocket.Conn, msg []byte) {
 		}
 		// 推送考勤信息
 		mac := fmt.Sprintf("checkin-%d", record.Enrollid)
-		url := fmt.Sprintf("%s?key=%s&mac=%s&time=%d", config.EnvConfig.REPORT_API, config.EnvConfig.REPORT_KEY, mac, reportTime.Unix())
+		url := fmt.Sprintf("%s?key=%v&mac=%s&time=%d", config.EnvConfig.REPORT_API, key, mac, reportTime.Unix())
 		_, err = http.Post(url, "", nil)
 		if err != nil {
 			log.Println("推送考勤信息失败,", err)

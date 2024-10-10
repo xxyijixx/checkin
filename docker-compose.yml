@@ -30,22 +30,22 @@ services:
       - "7788:7788"
     environment:
       TZ: Asia/Shanghai
-      STORAGE: sqlite
+      STORAGE: mysql
       SQLITE_PATH: "./db/checkin.db"
-      MYSQL_HOST: 10.55.158.5 
-      MYSQL_PORT: 3306
-      MYSQL_USERNAME: dootask 
-      MYSQL_PASSWORD: 123456 
-      MYSQL_DB_NAME: dootask
-      REPORT_API: "http://10.55.158.3:80/api/public/checkin/report"
+      MYSQL_HOST: "${DB_HOST}"
+      MYSQL_PORT: "${DB_PORT}"
+      MYSQL_USERNAME: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_DB_NAME: "${DB_DATABASE}"
+      REPORT_API: "http://${APP_IPPR}.3:80/api/public/checkin/report"
       REPORT_KEY: "2fc24d61be12502d4414503efb48308f"
     volumes:
-      - ./tmp/db:/app/db
+      - ./docker/sqlite:/app/db
     networks:
       extnetwork:
-        ipv4_address: "10.55.158.55"
+        ipv4_address: "${APP_IPPR}.55"
 
 networks:
   extnetwork:
-    name: "dootask-networks-ea6152"
+    name: "dootask-networks-${APP_ID}"
     external: true

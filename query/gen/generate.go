@@ -23,7 +23,7 @@ func main() {
 
 	// g.UseDB(gormdb) // reuse your gorm db
 
-	g.ApplyBasic(model.CheckinDevice{})
+	g.ApplyBasic(model.CheckinDevice{}, model.Setting{})
 
 	g.Execute()
 }

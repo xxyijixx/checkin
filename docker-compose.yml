@@ -38,7 +38,6 @@ services:
       MYSQL_PASSWORD: "${DB_PASSWORD}"
       MYSQL_DB_NAME: "${DB_DATABASE}"
       REPORT_API: "http://${APP_IPPR}.3:80/api/public/checkin/report"
-      REPORT_KEY: "2fc24d61be12502d4414503efb48308f"
     volumes:
       - ./docker/sqlite:/app/db
     networks:

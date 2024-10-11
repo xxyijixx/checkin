@@ -103,6 +103,7 @@ func HandleSetUserInfoAll(msg schema.SetuserinfoMessage) *schema.HttpRetMessage[
 			}
 			log.Warnf("部分设备[%v]下发用户信息成功", device_sns)
 		}
+		log.Warnf("等待返回信息错误: %v", err)
 		return schema.Error[schema.RetSetuserinfo]("上传失败")
 	}
 	data := schema.RetSetuserinfo{

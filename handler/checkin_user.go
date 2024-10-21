@@ -82,12 +82,11 @@ func HandleSetUserInfoAll(msg schema.SetuserinfoMessage) *schema.HttpRetMessage[
 			log.Warnf("下发用户失败，设备[%s]未连接", device.Sn)
 			continue
 		}
-		// clientsBySn
 		activeDeviceNum++
 		go HandleSetuserinfo(conn, msg)
 	}
 	log.Debugf("当前活跃设备数量:%v", activeDeviceNum)
-	// 当前没有活跃设备
+
 	if activeDeviceNum == 0 {
 		log.Warn("当前没有活跃设备")
 		return schema.Error[schema.RetSetuserinfo]("获取设备信息失败")

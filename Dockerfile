@@ -40,3 +40,4 @@ RUN chmod +x /app/main
 # 指定默认命令
 CMD ["sh", "-c", "/app/main migrate && /app/main up"]
 
+EXPOSE 7788

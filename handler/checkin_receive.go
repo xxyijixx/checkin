@@ -144,7 +144,8 @@ func ReceiveSendlog(conn *websocket.Conn, msg []byte) {
 		}
 		// 推送考勤信息
 		mac := fmt.Sprintf("checkin-%d", record.Enrollid)
-		url := fmt.Sprintf("%s?key=%v&mac=%s&time=%d&type=face", config.EnvConfig.REPORT_API, key, mac, reportTime.Unix())
+		url := fmt.Sprintf("%s?key=%v&mac=%s&time=%d&type=face",
+			config.EnvConfig.REPORT_API, key, mac, reportTime.Unix())
 		_, err = http.Post(url, "", nil)
 		if err != nil {
 			log.Println("推送考勤信息失败,", err)
